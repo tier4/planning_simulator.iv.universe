@@ -541,12 +541,9 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
 
   srv.request.object_id = uuid_map_[name];
 
-  for (auto success { false }; ros::ok() and not success; )
-  {
+  for (auto success { false }; ros::ok() and not success; ) {
     success = client_.call(srv) and srv.response.success;
-
-    if (not success)
-    {
+    if (not success) {
       ROS_WARN_STREAM("Failed get_object service (the service is likely not on standby and will be requested again at 1 Hz).");
     }
   }
