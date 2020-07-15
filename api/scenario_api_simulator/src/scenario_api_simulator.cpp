@@ -538,23 +538,19 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
   }
 
   npc_simulator::GetObject srv;
-  //loop until getting npc is successed
-  while (ros::ok()) {
-    bool success_get_npc = true;
-    srv.request.object_id = uuid_map_[name];
-    if (!client_.call(srv)) {
-      ROS_WARN_THROTTLE(0.5, "failed to called GetObject Service");
-      success_get_npc = false;
-    }
 
-    if (!srv.response.success) {
-      ROS_WARN_THROTTLE(0.5, "failed to get npc information(invalid uuid)");
-      success_get_npc = false;
-    }
-    if (success_get_npc) {
-      break;
+  srv.request.object_id = uuid_map_[name];
+
+  for (auto success { false }; ros::ok() and not success; )
+  {
+    success = client_.call(srv) and srv.response.success;
+
+    if (not success)
+    {
+      ROS_WARN_STREAM("Failed get_object service (the service is likely not on standby and will be requested again at 1 Hz).");
     }
   }
+
   obj = srv.response.object;
 
   if (obj.header.frame_id != "map") {
