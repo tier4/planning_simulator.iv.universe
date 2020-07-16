@@ -150,14 +150,10 @@ bool ScenarioAPISimulator::addNPC(
   object.action = npc_simulator::Object::ADD;
   object.stop_by_vehicle = stop_by_vehicle;
 
-  npc_simulator::Object dummy;
-
-  // do
-  // {
+  for (npc_simulator::Object result {}; not getNPC(name, result); sleep(0.1))
+  {
     pub_object_info_.publish(object);
-    sleep(0.1);
-  // }
-  // while (not getNPC(name, dummy));
+  }
 
   return true;  // TODO check successs
 }

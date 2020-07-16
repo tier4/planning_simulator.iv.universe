@@ -888,27 +888,34 @@ void NPCSimulatorNode::objectCallback(const npc_simulator::Object::ConstPtr & ms
 {
   switch (msg->action) {
     case npc_simulator::Object::ADD: {
+      for (const auto& each : objects_) {
+        if (each.id == msg->id) {
+          return;
+        }
+      }
+
       tf2::Transform tf_input2map;
-      tf2::Transform tf_input2object_origin;
-      tf2::Transform tf_map2object_origin;
+
       try {
-        geometry_msgs::TransformStamped ros_input2map;
-        ros_input2map = tf_buffer_.lookupTransform(
-          /*target*/ msg->header.frame_id, /*src*/ "map", msg->header.stamp, ros::Duration(0.5));
+        geometry_msgs::TransformStamped ros_input2map =
+          tf_buffer_.lookupTransform(
+            msg->header.frame_id, "map", msg->header.stamp, ros::Duration(0.5));
         tf2::fromMsg(ros_input2map.transform, tf_input2map);
       } catch (tf2::TransformException & ex) {
         ROS_WARN("%s", ex.what());
         return;
       }
+
+      tf2::Transform tf_input2object_origin;
       tf2::fromMsg(msg->initial_state.pose_covariance.pose, tf_input2object_origin);
-      tf_map2object_origin = tf_input2map.inverse() * tf_input2object_origin;
-      npc_simulator::Object object;
-      object = *msg;
+
+      npc_simulator::Object object = *msg;
       object.header.frame_id = "map";
+
+      tf2::Transform tf_map2object_origin = tf_input2map.inverse() * tf_input2object_origin;
       tf2::toMsg(tf_map2object_origin, object.initial_state.pose_covariance.pose);
       // publish
-      const auto dummy_perception_obj_msg = convertObjectMsgToDummyPerception(&object);
-      dummy_perception_object_pub_.publish(dummy_perception_obj_msg);
+      dummy_perception_object_pub_.publish(convertObjectMsgToDummyPerception(&object));
       objects_.push_back(object);
       break;
     }
