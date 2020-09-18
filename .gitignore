@@ -1,0 +1,6 @@
+# VSCode
+.vscode/
+*.code-workspace
+
+# Python
+*.pyc

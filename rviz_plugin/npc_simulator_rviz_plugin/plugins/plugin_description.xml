@@ -1,0 +1,5 @@
+<library path="lib/libnpc_simulator_rviz_plugin">
+  <class name="rviz/NPCSimPedestrianInitialPoseTool" type="rviz::NPCSimPedestrianInitialPoseTool" base_class_type="rviz::Tool"></class>
+  <class name="rviz/NPCSimCarInitialPoseTool" type="rviz::NPCSimCarInitialPoseTool" base_class_type="rviz::Tool"></class>
+  <class name="rviz/NPCSimDeleteAllObjectsTool" type="rviz::NPCSimDeleteAllObjectsTool" base_class_type="rviz::Tool"></class>
+</library>

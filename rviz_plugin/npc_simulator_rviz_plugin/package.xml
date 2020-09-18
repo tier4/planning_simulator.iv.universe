@@ -1,0 +1,28 @@
+<?xml version="1.0" ?>
+<package format="2">
+  <name>npc_simulator_rviz_plugin</name>
+  <version>0.1.0</version>
+  <description>The npc_simulator_rviz_plugin package</description>
+
+  <maintainer email="tomoya.kimura@tier4.jp">Tomoya Kimura</maintainer>
+  <license>Apache2</license>
+
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>qtbase5-dev</build_depend>
+  <build_depend>rviz</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>npc_simulator</build_depend>
+
+  <exec_depend>libqt5-core</exec_depend>
+  <exec_depend>libqt5-gui</exec_depend>
+  <exec_depend>libqt5-widgets</exec_depend>
+  <exec_depend>rviz</exec_depend>
+  <exec_depend>tf</exec_depend>
+  <exec_depend>npc_simulator</exec_depend>
+
+  <export>
+    <rviz plugin="${prefix}/plugins/plugin_description.xml" />
+  </export>
+</package>
