@@ -268,6 +268,48 @@ bool NPCSimulator::checkValidLaneChange(
       return true;
     }
   }
+
+  // searching next lane of target lane of lane-change
+  std::vector<int> lane_id_list;
+  const auto target_lane = lanelet_map_ptr_->laneletLayer.get(lane_change_id);
+  const auto next_to_target_lanes = routing_graph_ptr_->following(target_lane);
+  for (const auto next_to_target_lane : next_to_target_lanes) {
+    {
+      const auto lanetag = next_to_target_lane.attributeOr("turn_direction", "else");
+      if (lanetag == "right" or lanetag == "left") {
+        break;
+      }
+    }
+    lane_id_list.emplace_back(next_to_target_lane.id());
+    const auto two_next_to_target_lanes = routing_graph_ptr_->following(next_to_target_lane);
+    for (const auto two_next_to_target_lane : two_next_to_target_lanes) {
+      {
+        const auto lanetag = two_next_to_target_lane.attributeOr("turn_direction", "else");
+        if (lanetag == "right" or lanetag == "left") {
+          break;
+        }
+      }
+      lane_id_list.emplace_back(two_next_to_target_lane.id());
+    }
+  }
+
+  for (const auto target_lane_id : lane_id_list) {
+    if (current_lane.id() == target_lane_id) {
+      // use next lane to lane change id
+      result_lane_id = target_lane_id;
+      return true;
+    }
+  }
+
+  for (const auto target_lane_id : lane_id_list) {
+    for (auto beside_lane : beside_lanes) {
+      if (beside_lane.id() == target_lane_id) {
+        // use next lane to lane change id
+        result_lane_id = target_lane_id;
+        return true;
+      }
+    }
+  }
   // wait lane change or finish lane change
   return false;
 }
@@ -515,6 +557,11 @@ double NPCSimulator::addCostByLaneTag(
   return cost;
 }
 
+double NPCSimulatorNode::addCostByBesidesLane(const bool is_in_besides_lane, const double base_cost)
+{
+  return is_in_besides_lane ? base_cost : 0.0;
+}
+
 int NPCSimulator::getCurrentLaneletID(
   const npc_simulator::msg::Object & obj, const bool with_target_lane, const double max_dist,
   const double max_delta_yaw)
@@ -534,6 +581,7 @@ int NPCSimulator::getCurrentLaneletID(
     lanelet_map_ptr_->laneletLayer, search_point, 20);  // distance, lanelet
   lanelet::Lanelet target_closest_lanelet;
   bool is_found_target_closest_lanelet = false;
+  bool is_in_besides_lane = false;
   double min_dist = max_dist;
   for (const auto & lanelet : nearest_lanelets) {
     // check lenalet is involved in routes or not
@@ -544,17 +592,26 @@ int NPCSimulator::getCurrentLaneletID(
       }
     }
 
-    if (!is_lane_in_route && with_target_lane) {
-      // when "with_target_lane" option is false, search current lanelet in entire lane.
-      continue;
+    for (const auto & lanelet : nearest_lanelets) {
+      //check lenalet is involved in besides of target routes or not (for lane change)
+      auto besides_lanelets = routing_graph_ptr_->besides(lanelet.second);
+      for (const auto & beside_lane : besides_lanelets) {
+        if (lanelet.second.id() == beside_lane.id()) {
+          if (!is_lane_in_route && with_target_lane) {
+            is_lane_in_route = true;
+            is_in_besides_lane = true;
+          }
+        }
+      }
     }
 
     double current_yaw = tf2::getYaw(obj_pose.orientation);
     double lane_yaw = lanelet::utils::getLaneletAngle(lanelet.second, obj_pose.position);
     double delta_yaw = std::abs(normalizeRadian(current_yaw - lane_yaw));
     auto lanetag = lanelet.second.attributeOr("turn_direction", "else");
-    double current_dist =
-      lanelet.first + addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_);
+    double current_dist = lanelet.first +
+                          addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_) +
+                          addCostByBesidesLane(is_in_besides_lane);
 
     if (current_dist < max_dist && delta_yaw < max_delta_yaw && current_dist < min_dist) {
       min_dist = current_dist;
