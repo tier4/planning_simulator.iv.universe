@@ -100,6 +100,7 @@ private:
     const geometry_msgs::Quaternion diff_quat);
   double addCostByLaneTag(
     const int lane_follow_dir, const std::string lanetag, const double base_cost = 0.2);
+  double addCostByBesidesLane(const bool is_in_besides_lane, const double base_cost = 3.0);
   int getCurrentLaneletID(
     const npc_simulator::Object & obj, const bool with_target_lane = true,
     const double max_dist = 20.0,
