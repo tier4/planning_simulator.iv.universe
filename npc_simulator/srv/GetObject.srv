@@ -1,0 +1,5 @@
+uuid_msgs/UniqueID object_id
+---
+bool success
+npc_simulator/Object object
+
