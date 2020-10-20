@@ -20,6 +20,7 @@
 #include <boost/geometry/geometries/linestring.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
+#include <utility>
 
 namespace bg = boost::geometry;
 typedef bg::model::d2::point_xy<double> Point;
@@ -231,7 +232,7 @@ bool NPCSimulatorNode::checkValidLaneChange(
       {
         const auto lanetag = two_next_to_target_lane.attributeOr("turn_direction", "else");
         if (lanetag == "right" or lanetag == "left") {
-          break;
+          continue;
         }
       }
       lane_id_list.emplace_back(two_next_to_target_lane.id());
@@ -522,40 +523,64 @@ int NPCSimulatorNode::getCurrentLaneletID(
   bool is_found_target_closest_lanelet = false;
   bool is_in_besides_lane = false;
   double min_dist = max_dist;
-  for (const auto & lanelet : nearest_lanelets) {
-    //check lenalet is involved in target routes or not
-    bool is_lane_in_route = false;
-    for (const auto & target_lane_id : obj_route.data) {
-      if (lanelet.second.id() == target_lane_id) {
-        is_lane_in_route = true;
+
+  //when "with_target_lane" option is false, search current lanelet from entire lane.
+  if (with_target_lane) {
+    // create lanelet list
+    std::vector<std::pair<int, bool>> lane_list;  // lane_id, is_besides_lane
+    //append lane in route
+    for (const auto & lane_id : obj_route.data) {
+      const bool is_besides_lane = false;
+      const auto lane_pair = std::make_pair(static_cast<int>(lane_id), is_besides_lane);
+      lane_list.emplace_back(lane_pair);
+    }
+
+    // append beside lane of lane-in-route
+    for (const auto & lane_id : obj_route.data) {
+      const auto lane_in_route = lanelet_map_ptr_->laneletLayer.get(lane_id);
+      auto besides_lanelets = routing_graph_ptr_->besides(lane_in_route);
+      for (const auto & beside_lane : besides_lanelets) {
+        const auto beside_lane_tag = beside_lane.attributeOr("turn_direction", "else");
+        if (
+          std::find(
+            obj_route.data.begin(), obj_route.data.end(), static_cast<int>(beside_lane.id())) !=
+          obj_route.data.end()) {
+          continue;
+        }
+        const bool is_besides_lane = true;
+        const auto lane_pair = std::make_pair(static_cast<int>(beside_lane.id()), is_besides_lane);
+        lane_list.emplace_back(lane_pair);
       }
     }
 
-    for (const auto & lanelet : nearest_lanelets) {
-      //check lenalet is involved in besides of target routes or not (for lane change)
-      auto besides_lanelets = routing_graph_ptr_->besides(lanelet.second);
-      for (const auto & beside_lane : besides_lanelets) {
-        if (lanelet.second.id() == beside_lane.id()) {
-          if (!is_lane_in_route && with_target_lane) {
+    for (const auto & near_lanelet : nearest_lanelets) {
+      bool is_lane_in_route = false;
+      for (const auto & lane_pair : lane_list) {
+        //check lenalet is involved in target lanes or not
+        for (const auto & target_lane_id : obj_route.data) {
+          if (lane_pair.first == near_lanelet.second.id()) {
             is_lane_in_route = true;
-            is_in_besides_lane = true;
+            is_in_besides_lane = lane_pair.second;
           }
         }
       }
-    }
 
-    double current_yaw = tf2::getYaw(obj_pose.orientation);
-    double lane_yaw = lanelet::utils::getLaneletAngle(lanelet.second, obj_pose.position);
-    double delta_yaw = std::abs(normalizeRadian(current_yaw - lane_yaw));
-    auto lanetag = lanelet.second.attributeOr("turn_direction", "else");
-    double current_dist = lanelet.first +
-                          addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_) +
-                          addCostByBesidesLane(is_in_besides_lane);
+      if (!is_lane_in_route) {
+        continue;
+      }
 
-    if (current_dist < max_dist && delta_yaw < max_delta_yaw and current_dist < min_dist) {
-      min_dist = current_dist;
-      target_closest_lanelet = lanelet.second;
-      is_found_target_closest_lanelet = true;
+      double current_yaw = tf2::getYaw(obj_pose.orientation);
+      double lane_yaw = lanelet::utils::getLaneletAngle(near_lanelet.second, obj_pose.position);
+      double delta_yaw = std::abs(normalizeRadian(current_yaw - lane_yaw));
+      auto lanetag = near_lanelet.second.attributeOr("turn_direction", "else");
+      double current_dist = near_lanelet.first +
+                            addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_) +
+                            addCostByBesidesLane(is_in_besides_lane);
+      if (current_dist < max_dist && delta_yaw < max_delta_yaw and current_dist < min_dist) {
+        min_dist = current_dist;
+        target_closest_lanelet = near_lanelet.second;
+        is_found_target_closest_lanelet = true;
+      }
     }
   }
 
@@ -943,7 +968,7 @@ void NPCSimulatorNode::objectCallback(const npc_simulator::Object::ConstPtr & ms
 {
   switch (msg->action) {
     case npc_simulator::Object::ADD: {
-      for (const auto& each : objects_) {
+      for (const auto & each : objects_) {
         if (each.id == msg->id) {
           return;
         }
@@ -952,8 +977,7 @@ void NPCSimulatorNode::objectCallback(const npc_simulator::Object::ConstPtr & ms
       tf2::Transform tf_input2map;
 
       try {
-        geometry_msgs::TransformStamped ros_input2map =
-          tf_buffer_.lookupTransform(
+        geometry_msgs::TransformStamped ros_input2map = tf_buffer_.lookupTransform(
           msg->header.frame_id, "map", msg->header.stamp, ros::Duration(0.5));
         tf2::fromMsg(ros_input2map.transform, tf_input2map);
       } catch (tf2::TransformException & ex) {
