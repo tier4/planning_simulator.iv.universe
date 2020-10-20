@@ -286,7 +286,7 @@ bool NPCSimulator::checkValidLaneChange(
       {
         const auto lanetag = two_next_to_target_lane.attributeOr("turn_direction", "else");
         if (lanetag == "right" or lanetag == "left") {
-          break;
+          continue;
         }
       }
       lane_id_list.emplace_back(two_next_to_target_lane.id());
@@ -557,7 +557,7 @@ double NPCSimulator::addCostByLaneTag(
   return cost;
 }
 
-double NPCSimulatorNode::addCostByBesidesLane(const bool is_in_besides_lane, const double base_cost)
+double NPCSimulator::addCostByBesidesLane(const bool is_in_besides_lane, const double base_cost)
 {
   return is_in_besides_lane ? base_cost : 0.0;
 }
@@ -583,40 +583,65 @@ int NPCSimulator::getCurrentLaneletID(
   bool is_found_target_closest_lanelet = false;
   bool is_in_besides_lane = false;
   double min_dist = max_dist;
-  for (const auto & lanelet : nearest_lanelets) {
-    // check lenalet is involved in routes or not
-    bool is_lane_in_route = false;
-    for (const auto & target_lane_id : obj_route.data) {
-      if (lanelet.second.id() == target_lane_id) {
-        is_lane_in_route = true;
+
+  //when "with_target_lane" option is false, search current lanelet from entire lane.
+  if (with_target_lane) {
+    // create lanelet list
+    std::vector<std::pair<int, bool>> lane_list;  // lane_id, is_besides_lane
+    //append lane in route
+    for (const auto & lane_id : obj_route.data) {
+      const bool is_besides_lane = false;
+      const auto lane_pair = std::make_pair(static_cast<int>(lane_id), is_besides_lane);
+      lane_list.emplace_back(lane_pair);
+    }
+
+    // append beside lane of lane-in-route
+    for (const auto & lane_id : obj_route.data) {
+      const auto lane_in_route = lanelet_map_ptr_->laneletLayer.get(lane_id);
+      auto besides_lanelets = routing_graph_ptr_->besides(lane_in_route);
+      for (const auto & beside_lane : besides_lanelets) {
+        const auto beside_lane_tag = beside_lane.attributeOr("turn_direction", "else");
+        if (
+          std::find(
+            obj_route.data.begin(), obj_route.data.end(), static_cast<int>(beside_lane.id())) !=
+          obj_route.data.end())
+        {
+          continue;
+        }
+        const bool is_besides_lane = true;
+        const auto lane_pair = std::make_pair(static_cast<int>(beside_lane.id()), is_besides_lane);
+        lane_list.emplace_back(lane_pair);
       }
     }
 
-    for (const auto & lanelet : nearest_lanelets) {
-      //check lenalet is involved in besides of target routes or not (for lane change)
-      auto besides_lanelets = routing_graph_ptr_->besides(lanelet.second);
-      for (const auto & beside_lane : besides_lanelets) {
-        if (lanelet.second.id() == beside_lane.id()) {
-          if (!is_lane_in_route && with_target_lane) {
+    for (const auto & near_lanelet : nearest_lanelets) {
+      bool is_lane_in_route = false;
+      for (const auto & lane_pair : lane_list) {
+        //check lenalet is involved in target lanes or not
+        for (const auto & target_lane_id : obj_route.data) {
+          if (lane_pair.first == near_lanelet.second.id()) {
             is_lane_in_route = true;
-            is_in_besides_lane = true;
+            is_in_besides_lane = lane_pair.second;
           }
         }
       }
-    }
 
-    double current_yaw = tf2::getYaw(obj_pose.orientation);
-    double lane_yaw = lanelet::utils::getLaneletAngle(lanelet.second, obj_pose.position);
-    double delta_yaw = std::abs(normalizeRadian(current_yaw - lane_yaw));
-    auto lanetag = lanelet.second.attributeOr("turn_direction", "else");
-    double current_dist = lanelet.first +
-                          addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_) +
-                          addCostByBesidesLane(is_in_besides_lane);
+      if (!is_lane_in_route) {
+        continue;
+      }
 
-    if (current_dist < max_dist && delta_yaw < max_delta_yaw && current_dist < min_dist) {
-      min_dist = current_dist;
-      target_closest_lanelet = lanelet.second;
-      is_found_target_closest_lanelet = true;
+      double current_yaw = tf2::getYaw(obj_pose.orientation);
+      double lane_yaw = lanelet::utils::getLaneletAngle(near_lanelet.second, obj_pose.position);
+      double delta_yaw = std::abs(normalizeRadian(current_yaw - lane_yaw));
+      auto lanetag = near_lanelet.second.attributeOr("turn_direction", "else");
+      double current_dist = near_lanelet.first +
+        addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_) +
+        addCostByBesidesLane(is_in_besides_lane);
+      if (current_dist < max_dist && delta_yaw < max_delta_yaw and current_dist < min_dist) {
+        min_dist = current_dist;
+        target_closest_lanelet = near_lanelet.second;
+        is_found_target_closest_lanelet = true;
+      }
     }
   }
 
@@ -1022,31 +1047,31 @@ void NPCSimulator::objectCallback(const npc_simulator::msg::Object::ConstSharedP
           if (each.id == msg->id) {
             return;
           }
+
+          tf2::Transform tf_input2map;
+
+          try {
+            geometry_msgs::msg::TransformStamped ros_input2map = tf_buffer_.lookupTransform(
+              msg->header.frame_id, "map", msg->header.stamp, rclcpp::Duration::from_seconds(0.5));
+            tf2::fromMsg(ros_input2map.transform, tf_input2map);
+          } catch (tf2::TransformException & ex) {
+            RCLCPP_WARN(logger_, "%s", ex.what());
+            return;
+          }
+
+          tf2::Transform tf_input2object_origin;
+          tf2::fromMsg(msg->initial_state.pose_covariance.pose, tf_input2object_origin);
+
+          npc_simulator::msg::Object object = *msg;
+          object.header.frame_id = "map";
+
+          tf2::Transform tf_map2object_origin = tf_input2map.inverse() * tf_input2object_origin;
+          tf2::toMsg(tf_map2object_origin, object.initial_state.pose_covariance.pose);
+          // publish
+          dummy_perception_object_pub_->publish(convertObjectMsgToDummyPerception(&object));
+          objects_.push_back(object);
+          break;
         }
-
-        tf2::Transform tf_input2map;
-
-        try {
-          geometry_msgs::msg::TransformStamped ros_input2map = tf_buffer_.lookupTransform(
-            msg->header.frame_id, "map", msg->header.stamp, rclcpp::Duration::from_seconds(0.5));
-          tf2::fromMsg(ros_input2map.transform, tf_input2map);
-        } catch (tf2::TransformException & ex) {
-          RCLCPP_WARN(logger_, "%s", ex.what());
-          return;
-        }
-
-        tf2::Transform tf_input2object_origin;
-        tf2::fromMsg(msg->initial_state.pose_covariance.pose, tf_input2object_origin);
-
-        npc_simulator::msg::Object object = *msg;
-        object.header.frame_id = "map";
-
-        tf2::Transform tf_map2object_origin = tf_input2map.inverse() * tf_input2object_origin;
-        tf2::toMsg(tf_map2object_origin, object.initial_state.pose_covariance.pose);
-        // publish
-        dummy_perception_object_pub_->publish(convertObjectMsgToDummyPerception(&object));
-        objects_.push_back(object);
-        break;
       }
     case npc_simulator::msg::Object::DELETE: {
         for (size_t i = 0; i < objects_.size(); ++i) {
