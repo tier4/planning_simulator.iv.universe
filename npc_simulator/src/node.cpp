@@ -585,36 +585,35 @@ int NPCSimulator::getCurrentLaneletID(
   double min_dist = max_dist;
 
   //when "with_target_lane" option is false, search current lanelet from entire lane.
-  if (with_target_lane) {
-    // create lanelet list
-    std::vector<std::pair<int, bool>> lane_list;  // lane_id, is_besides_lane
-    //append lane in route
-    for (const auto & lane_id : obj_route.data) {
-      const bool is_besides_lane = false;
-      const auto lane_pair = std::make_pair(static_cast<int>(lane_id), is_besides_lane);
+  // create lanelet list
+  std::vector<std::pair<int, bool>> lane_list;  // lane_id, is_besides_lane
+  //append lane in route
+  for (const auto & lane_id : obj_route.data) {
+    const bool is_besides_lane = false;
+    const auto lane_pair = std::make_pair(static_cast<int>(lane_id), is_besides_lane);
+    lane_list.emplace_back(lane_pair);
+  }
+
+  // append beside lane of lane-in-route
+  for (const auto & lane_id : obj_route.data) {
+    const auto lane_in_route = lanelet_map_ptr_->laneletLayer.get(lane_id);
+    auto besides_lanelets = routing_graph_ptr_->besides(lane_in_route);
+    for (const auto & beside_lane : besides_lanelets) {
+      const auto beside_lane_tag = beside_lane.attributeOr("turn_direction", "else");
+      if (
+        std::find(
+          obj_route.data.begin(), obj_route.data.end(), static_cast<int>(beside_lane.id())) !=
+        obj_route.data.end()) {
+        continue;
+      }
+      const bool is_besides_lane = true;
+      const auto lane_pair = std::make_pair(static_cast<int>(beside_lane.id()), is_besides_lane);
       lane_list.emplace_back(lane_pair);
     }
+  }
 
-    // append beside lane of lane-in-route
-    for (const auto & lane_id : obj_route.data) {
-      const auto lane_in_route = lanelet_map_ptr_->laneletLayer.get(lane_id);
-      auto besides_lanelets = routing_graph_ptr_->besides(lane_in_route);
-      for (const auto & beside_lane : besides_lanelets) {
-        const auto beside_lane_tag = beside_lane.attributeOr("turn_direction", "else");
-        if (
-          std::find(
-            obj_route.data.begin(), obj_route.data.end(), static_cast<int>(beside_lane.id())) !=
-          obj_route.data.end())
-        {
-          continue;
-        }
-        const bool is_besides_lane = true;
-        const auto lane_pair = std::make_pair(static_cast<int>(beside_lane.id()), is_besides_lane);
-        lane_list.emplace_back(lane_pair);
-      }
-    }
-
-    for (const auto & near_lanelet : nearest_lanelets) {
+  for (const auto & near_lanelet : nearest_lanelets) {
+    if (with_target_lane) {
       bool is_lane_in_route = false;
       for (const auto & lane_pair : lane_list) {
         //check lenalet is involved in target lanes or not
@@ -629,19 +628,19 @@ int NPCSimulator::getCurrentLaneletID(
       if (!is_lane_in_route) {
         continue;
       }
+    }
 
-      double current_yaw = tf2::getYaw(obj_pose.orientation);
-      double lane_yaw = lanelet::utils::getLaneletAngle(near_lanelet.second, obj_pose.position);
-      double delta_yaw = std::abs(normalizeRadian(current_yaw - lane_yaw));
-      auto lanetag = near_lanelet.second.attributeOr("turn_direction", "else");
-      double current_dist = near_lanelet.first +
-        addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_) +
-        addCostByBesidesLane(is_in_besides_lane);
-      if (current_dist < max_dist && delta_yaw < max_delta_yaw and current_dist < min_dist) {
-        min_dist = current_dist;
-        target_closest_lanelet = near_lanelet.second;
-        is_found_target_closest_lanelet = true;
-      }
+    double current_yaw = tf2::getYaw(obj_pose.orientation);
+    double lane_yaw = lanelet::utils::getLaneletAngle(near_lanelet.second, obj_pose.position);
+    double delta_yaw = std::abs(normalizeRadian(current_yaw - lane_yaw));
+    auto lanetag = near_lanelet.second.attributeOr("turn_direction", "else");
+    double current_dist = near_lanelet.first +
+                          addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_) +
+                          addCostByBesidesLane(is_in_besides_lane);
+    if (current_dist < max_dist && delta_yaw < max_delta_yaw and current_dist < min_dist) {
+      min_dist = current_dist;
+      target_closest_lanelet = near_lanelet.second;
+      is_found_target_closest_lanelet = true;
     }
   }
 
