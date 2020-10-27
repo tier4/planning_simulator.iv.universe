@@ -838,9 +838,8 @@ double NPCSimulatorNode::calcSpeedToAvoidCollision(const double col_dist)
 {
   if (col_dist <= margin_dist_to_avoid_collision_) {
     return 0.0;
-
-    return (col_dist - margin_dist_to_avoid_collision_) / margin_time_to_avoid_collision_;
   }
+  return (col_dist - margin_dist_to_avoid_collision_) / margin_time_to_avoid_collision_;
 }
 
 double NPCSimulatorNode::getFollowLaneDiffYaw(
