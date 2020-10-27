@@ -14,13 +14,8 @@
  * limitations under the License.
  */
 #include "npc_simulator/node.h"
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <boost/geometry.hpp>
-#include <boost/geometry/geometries/linestring.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
-#include <boost/geometry/geometries/polygon.hpp>
-#include <utility>
 
 namespace bg = boost::geometry;
 typedef bg::model::d2::point_xy<double> Point;
@@ -142,7 +137,7 @@ void NPCSimulatorNode::mainTimerCallback(const ros::TimerEvent &)
 
 void NPCSimulatorNode::pubInfoTimerCallback(const ros::TimerEvent &)
 {
-  //publish npc info for visulaization
+  //publish npc info for visualization
   const auto autoware_perception_msg = convertObjectMsgToAutowarePerception(objects_, true);
   debug_object_pub_.publish(autoware_perception_msg);
 }
@@ -181,9 +176,9 @@ void NPCSimulatorNode::inputImuInfo(
 {
   const double current_vel = obj->initial_state.twist_covariance.twist.linear.x;
   const double current_yaw = tf2::getYaw(obj->initial_state.pose_covariance.pose.orientation);
-  const double current_accelration = (current_vel - prev_vel) / delta_time;
+  const double current_acceleration = (current_vel - prev_vel) / delta_time;
   const double current_yaw_rate = (current_yaw - prev_yaw) / delta_time;
-  obj->imu.linear_acceleration.x = current_accelration;
+  obj->imu.linear_acceleration.x = current_acceleration;
   obj->imu.angular_velocity.z = current_yaw_rate;
 }
 
@@ -368,7 +363,7 @@ int NPCSimulatorNode::DecideLaneIdWithLaneChangeMode(
     }
   }
 
-  // check existance of lane with target id
+  // check existence of lane with target id
   if (!lanelet_map_ptr_->laneletLayer.exists(lane_id)) {
     ROS_WARN_STREAM("target lane:" << current_lane_id << "does not exist.");
     //return nearest lane
@@ -556,7 +551,7 @@ int NPCSimulatorNode::getCurrentLaneletID(
     if (with_target_lane) {
       bool is_lane_in_route = false;
       for (const auto & lane_pair : lane_list) {
-        //check lenalet is involved in target lanes or not
+        //check lanelet is involved in target lanes or not
         for (const auto & target_lane_id : obj_route.data) {
           if (lane_pair.first == near_lanelet.second.id()) {
             is_lane_in_route = true;
@@ -636,7 +631,7 @@ double NPCSimulatorNode::getFootOfPerpendicularLineLength(
   const double p_x = pose.position.x;
   const double p_y = pose.position.y;
 
-  //calc length of foot of perperndicular line
+  //calc length of foot of perpendicular line
   double pl_length = std::fabs(a * p_x + b * p_y + c) / std::sqrt(a * a + b * b);
   return pl_length;
 }
@@ -764,7 +759,7 @@ bool NPCSimulatorNode::calcCollisionDistance(const npc_simulator::Object & obj, 
     std::fabs(std::cos(rel_yaw)) * vehicle_width_ + std::fabs(std::sin(rel_yaw)) * vehicle_length_;
   if (
     std::fabs(relative_pose.position.y) >
-    (obj.shape.dimensions.y + rel_vehicle_width) / 2.0 + collsion_width_margin_) {
+    (obj.shape.dimensions.y + rel_vehicle_width) / 2.0 + collision_width_margin_) {
     // ego vehicle does not exists in front of npc
     return false;
   }
