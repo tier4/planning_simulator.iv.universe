@@ -196,7 +196,7 @@ void NPCSimulator::mainTimerCallback()
 
 void NPCSimulator::pubInfoTimerCallback()
 {
-  // publish npc info for visulaization
+  //publish npc info for visualization
   const auto autoware_perception_msg = convertObjectMsgToAutowarePerception(objects_, true);
   debug_object_pub_->publish(autoware_perception_msg);
 }
@@ -235,9 +235,9 @@ void NPCSimulator::inputImuInfo(
 {
   const double current_vel = obj->initial_state.twist_covariance.twist.linear.x;
   const double current_yaw = tf2::getYaw(obj->initial_state.pose_covariance.pose.orientation);
-  const double current_accelration = (current_vel - prev_vel) / delta_time;
+  const double current_acceleration = (current_vel - prev_vel) / delta_time;
   const double current_yaw_rate = (current_yaw - prev_yaw) / delta_time;
-  obj->imu.linear_acceleration.x = current_accelration;
+  obj->imu.linear_acceleration.x = current_acceleration;
   obj->imu.angular_velocity.z = current_yaw_rate;
 }
 
@@ -428,7 +428,7 @@ int NPCSimulator::DecideLaneIdWithLaneChangeMode(
     }
   }
 
-  // check existance of lane with target id
+  // check existence of lane with target id
   if (!lanelet_map_ptr_->laneletLayer.exists(lane_id)) {
     RCLCPP_WARN_STREAM(logger_, "target lane:" << current_lane_id << "does not exist.");
     // return nearest lane
@@ -603,7 +603,8 @@ int NPCSimulator::getCurrentLaneletID(
       if (
         std::find(
           obj_route.data.begin(), obj_route.data.end(), static_cast<int>(beside_lane.id())) !=
-        obj_route.data.end()) {
+        obj_route.data.end())
+      {
         continue;
       }
       const bool is_besides_lane = true;
@@ -616,7 +617,7 @@ int NPCSimulator::getCurrentLaneletID(
     if (with_target_lane) {
       bool is_lane_in_route = false;
       for (const auto & lane_pair : lane_list) {
-        //check lenalet is involved in target lanes or not
+        //check lanelet is involved in target lanes or not
         for (const auto & target_lane_id : obj_route.data) {
           if (lane_pair.first == near_lanelet.second.id()) {
             is_lane_in_route = true;
@@ -635,8 +636,8 @@ int NPCSimulator::getCurrentLaneletID(
     double delta_yaw = std::abs(normalizeRadian(current_yaw - lane_yaw));
     auto lanetag = near_lanelet.second.attributeOr("turn_direction", "else");
     double current_dist = near_lanelet.first +
-                          addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_) +
-                          addCostByBesidesLane(is_in_besides_lane);
+      addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_) +
+      addCostByBesidesLane(is_in_besides_lane);
     if (current_dist < max_dist && delta_yaw < max_delta_yaw and current_dist < min_dist) {
       min_dist = current_dist;
       target_closest_lanelet = near_lanelet.second;
@@ -697,7 +698,7 @@ double NPCSimulator::getFootOfPerpendicularLineLength(
   const double p_x = pose.position.x;
   const double p_y = pose.position.y;
 
-  // calc length of foot of perperndicular line
+  //calc length of foot of perpendicular line
   double pl_length = std::fabs(a * p_x + b * p_y + c) / std::sqrt(a * a + b * b);
   return pl_length;
 }
@@ -831,7 +832,7 @@ bool NPCSimulator::calcCollisionDistance(
     std::fabs(std::cos(rel_yaw)) * vehicle_width_ + std::fabs(std::sin(rel_yaw)) * vehicle_length_;
   if (
     std::fabs(relative_pose.position.y) >
-    (obj.shape.dimensions.y + rel_vehicle_width) / 2.0 + collsion_width_margin_)
+    (obj.shape.dimensions.y + rel_vehicle_width) / 2.0 + collision_width_margin_)
   {
     // ego vehicle does not exists in front of npc
     return false;

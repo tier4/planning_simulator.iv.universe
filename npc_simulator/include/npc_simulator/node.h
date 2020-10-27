@@ -50,20 +50,20 @@ private:
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
 
-  rclcpp::Publisher<dummy_perception_publisher::msg::Object>::SharedPtr
-    dummy_perception_object_pub_;
-  rclcpp::Publisher<autoware_perception_msgs::msg::DynamicObjectArray>::SharedPtr
-    debug_object_pub_;  // for visualization
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr engage_sub_;
-  rclcpp::Subscription<npc_simulator::msg::Object>::SharedPtr object_sub_;
-  rclcpp::Subscription<autoware_lanelet2_msgs::msg::MapBin>::SharedPtr map_sub_;
-  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr pose_sub_;
-  rclcpp::Service<npc_simulator::srv::GetObject>::SharedPtr getobject_srv_;
+  rclcpp::Publisher < dummy_perception_publisher::msg::Object > ::SharedPtr
+  dummy_perception_object_pub_;
+  rclcpp::Publisher < autoware_perception_msgs::msg::DynamicObjectArray > ::SharedPtr
+  debug_object_pub_;    // for visualization
+  rclcpp::Subscription < std_msgs::msg::Bool > ::SharedPtr engage_sub_;
+  rclcpp::Subscription < npc_simulator::msg::Object > ::SharedPtr object_sub_;
+  rclcpp::Subscription < autoware_lanelet2_msgs::msg::MapBin > ::SharedPtr map_sub_;
+  rclcpp::Subscription < geometry_msgs::msg::PoseStamped > ::SharedPtr pose_sub_;
+  rclcpp::Service < npc_simulator::srv::GetObject > ::SharedPtr getobject_srv_;
   rclcpp::TimerBase::SharedPtr timer_main_;
   rclcpp::TimerBase::SharedPtr timer_pub_info_;
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
-  std::vector<npc_simulator::msg::Object> objects_;
+  std::vector < npc_simulator::msg::Object > objects_;
   vehicle_info_util::VehicleInfo vehicle_info_;
 
   // simulation state
@@ -76,9 +76,9 @@ private:
   double vehicle_base2center_;
 
   // lanelet
-  std::shared_ptr<lanelet::LaneletMap> lanelet_map_ptr_;
-  std::shared_ptr<lanelet::routing::RoutingGraph> routing_graph_ptr_;
-  std::shared_ptr<lanelet::traffic_rules::TrafficRules> traffic_rules_ptr_;
+  std::shared_ptr < lanelet::LaneletMap > lanelet_map_ptr_;
+  std::shared_ptr < lanelet::routing::RoutingGraph > routing_graph_ptr_;
+  std::shared_ptr < lanelet::traffic_rules::TrafficRules > traffic_rules_ptr_;
 
   void mainTimerCallback();
   void pubInfoTimerCallback();
@@ -92,7 +92,7 @@ private:
   int getCurrentLaneletID(
     const npc_simulator::msg::Object & obj, const bool with_target_lane = true,
     const double max_dist = 20.0,
-    const double max_delta_yaw = boost::math::constants::pi<double>() * 3.0 / 4.0);
+    const double max_delta_yaw = boost::math::constants::pi < double > () * 3.0 / 4.0);
   bool checkValidLaneChange(
     const int current_lane_id, const int lane_change_id, int & result_lane_id);
   bool checkValidLaneChange(
@@ -115,7 +115,7 @@ private:
   double calcMaxSpeed(const npc_simulator::msg::Object & obj, int obj_lane_id);
   double getFollowLaneDiffYaw(
     const double diff_yaw, const double signed_lane_dist, const double current_vel, const double dt,
-    const double max_yaw_rate = boost::math::constants::pi<double>() * 1.0);
+    const double max_yaw_rate = boost::math::constants::pi < double > () * 1.0);
   double getNearestZPos(const geometry_msgs::msg::Pose & pose);
   double calcSmoothZPos(
     geometry_msgs::msg::Point current_point, geometry_msgs::msg::Point p1,
@@ -137,18 +137,18 @@ private:
   dummy_perception_publisher::msg::Object convertObjectMsgToDummyPerception(
     npc_simulator::msg::Object * obj);
   autoware_perception_msgs::msg::DynamicObjectArray convertObjectMsgToAutowarePerception(
-    const std::vector<npc_simulator::msg::Object> & obj_vec, const bool prediction);
+    const std::vector < npc_simulator::msg::Object > & obj_vec, const bool prediction);
 
-  // paramerter
+  // parameter
   const double p_coef_diff_dist_ = 0.1;
   const double p_coef_diff_dist_vel_ = 0.01;
   const double max_yaw_diff_dist_ =
-    boost::math::constants::pi<double>() / 8.0;  // max value of addtional yaw by distance to lane
+    boost::math::constants::pi < double > () / 8.0;  // max value of additional yaw by distance to lane
   const double base_cost_by_lane_tag_ = 3.5;
 
   const double max_yaw_rate_coef_ =
-    boost::math::constants::pi<double>() / 15.0;  // coef * current_velocity = max_yaw
-  const double max_yaw_rate_uturn_ = boost::math::constants::pi<double>() / 6.0;
+    boost::math::constants::pi < double > () / 15.0;  // coef * current_velocity = max_yaw
+  const double max_yaw_rate_uturn_ = boost::math::constants::pi < double > () / 6.0;
 
   const double max_speed_ = 100.0;             // [m/s]
   const double max_speed_z_ = 0.5;             // [m/s]
@@ -157,7 +157,7 @@ private:
   const double max_speed_curve_ = 5.0;         // [m/s]
 
   const double thr_dist_lane_change_ = 1.0;
-  const double thr_yaw_lane_change_ = boost::math::constants::pi<double>() / 10.0;
+  const double thr_yaw_lane_change_ = boost::math::constants::pi < double > () / 10.0;
 
   const double future_consideration_time_ = 0.05;
   const double max_consideration_dist_ = 0.5;
@@ -167,13 +167,13 @@ private:
   const double margin_time_to_avoid_collision_ = 2.2;
   const double accel_to_avoid_collision_ = 5.0;
   const double max_stop_distance_thresh_ = 100.0;
-  const double collsion_width_margin_ = 1.0;
+  const double collision_width_margin_ = 1.0;
 
   /* search nearest lane*/
   const double max_dist_without_target_ = 10.0;
-  const double max_delta_yaw_without_target_ = boost::math::constants::pi<double>() / 3.0;
+  const double max_delta_yaw_without_target_ = boost::math::constants::pi < double > () / 3.0;
   const double max_dist_uturn_ = 10.0;
-  const double max_delta_yaw_uturn_ = boost::math::constants::pi<double>() / 3.0;
+  const double max_delta_yaw_uturn_ = boost::math::constants::pi < double > () / 3.0;
 
   /**
    * \brief Initialize a timer and register it with this class
@@ -190,7 +190,8 @@ private:
 
 public:
   explicit NPCSimulator(rclcpp::Node & node);
-  ~NPCSimulator() {}
+  ~NPCSimulator() {
+  }
 
   bool getObject(
     const npc_simulator::srv::GetObject::Request::SharedPtr req,
