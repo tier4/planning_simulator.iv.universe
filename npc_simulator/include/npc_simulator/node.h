@@ -65,7 +65,7 @@ class NPCSimulatorNode
 private:
   ros::NodeHandle nh_, pnh_;
   ros::Publisher dummy_perception_object_pub_;
-  ros::Publisher debug_object_pub_;  // for visualization
+  ros::Publisher debug_object_pub_;  // for visulatization
   ros::Subscriber engage_sub_;
   ros::Subscriber object_sub_;
   ros::Subscriber map_sub_;
@@ -99,8 +99,8 @@ private:
     npc_simulator::Object * obj, const double move_distance,
     const geometry_msgs::Quaternion diff_quat);
   double addCostByLaneTag(
-    const int lane_follow_dir, const std::string lanetag, const double base_cost = 0.2);
-  double addCostByBesidesLane(const bool is_in_besides_lane, const double base_cost = 3.0);
+    const int lane_follow_dir, const std::string & lanetag, const double base_cost = 0.2);
+  double addCostByBesidesLane(const bool is_in_besides_lane, const double base_cost = 0.5);
   int getCurrentLaneletID(
     const npc_simulator::Object & obj, const bool with_target_lane = true,
     const double max_dist = 20.0,
@@ -150,11 +150,11 @@ private:
   autoware_perception_msgs::DynamicObjectArray convertObjectMsgToAutowarePerception(
     const std::vector<npc_simulator::Object> & obj_vec, const bool prediction);
 
-  // parameter
+  // paramerter
   const double p_coef_diff_dist_ = 0.1;
   const double p_coef_diff_dist_vel_ = 0.01;
   const double max_yaw_diff_dist_ =
-    boost::math::constants::pi<double>() / 8.0;  // max value of additional yaw by distance to lane
+    boost::math::constants::pi<double>() / 8.0;  // max value of addtional yaw by distance to lane
   const double base_cost_by_lane_tag_ = 3.5;
 
   const double max_yaw_rate_coef_ =
@@ -178,7 +178,7 @@ private:
   const double margin_time_to_avoid_collision_ = 2.2;
   const double accel_to_avoid_collision_ = 5.0;
   const double max_stop_distance_thresh_ = 100.0;
-  const double collision_width_margin_ = 1.0;
+  const double collsion_width_margin_ = 1.0;
 
   /* search nearest lane*/
   const double max_dist_without_target_ = 10.0;
