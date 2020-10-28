@@ -261,7 +261,7 @@ bool NPCSimulator::checkValidLaneChange(
     result_lane_id = lane_change_id;
     return true;
   }
-  for (auto beside_lane : beside_lanes) {
+  for (const auto & beside_lane : beside_lanes) {
     if (beside_lane.id() == lane_change_id) {
       // use lane change id
       result_lane_id = lane_change_id;
@@ -273,7 +273,7 @@ bool NPCSimulator::checkValidLaneChange(
   std::vector<int> lane_id_list;
   const auto target_lane = lanelet_map_ptr_->laneletLayer.get(lane_change_id);
   const auto next_to_target_lanes = routing_graph_ptr_->following(target_lane);
-  for (const auto next_to_target_lane : next_to_target_lanes) {
+  for (const auto & next_to_target_lane : next_to_target_lanes) {
     {
       const auto lanetag = next_to_target_lane.attributeOr("turn_direction", "else");
       if (lanetag == std::string("right") or lanetag == std::string("left")) {
@@ -282,7 +282,7 @@ bool NPCSimulator::checkValidLaneChange(
     }
     lane_id_list.emplace_back(next_to_target_lane.id());
     const auto two_next_to_target_lanes = routing_graph_ptr_->following(next_to_target_lane);
-    for (const auto two_next_to_target_lane : two_next_to_target_lanes) {
+    for (const auto & two_next_to_target_lane : two_next_to_target_lanes) {
       {
         const auto lanetag = two_next_to_target_lane.attributeOr("turn_direction", "else");
         if (lanetag == std::string("right") or lanetag == std::string("left")) {
@@ -302,7 +302,7 @@ bool NPCSimulator::checkValidLaneChange(
   }
 
   for (const auto target_lane_id : lane_id_list) {
-    for (auto beside_lane : beside_lanes) {
+    for (const auto & beside_lane : beside_lanes) {
       if (beside_lane.id() == target_lane_id) {
         // use next lane to lane change id
         result_lane_id = target_lane_id;
@@ -532,7 +532,7 @@ void NPCSimulator::updateVelocity(npc_simulator::msg::Object * obj, double dt)
 }
 
 double NPCSimulator::addCostByLaneTag(
-  const int lane_follow_dir, const std::string lanetag, const double base_cost)
+  const int lane_follow_dir, const std::string & lanetag, const double base_cost)
 {
   double cost = 0;
   // introduce cost
