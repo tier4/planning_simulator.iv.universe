@@ -217,7 +217,7 @@ bool NPCSimulatorNode::checkValidLaneChange(
   for (const auto next_to_target_lane : next_to_target_lanes) {
     {
       const auto lanetag = next_to_target_lane.attributeOr("turn_direction", "else");
-      if (lanetag == "right" or lanetag == "left") {
+      if (lanetag == std::string("right") or lanetag == std::string("left")) {
         break;
       }
     }
@@ -226,7 +226,7 @@ bool NPCSimulatorNode::checkValidLaneChange(
     for (const auto two_next_to_target_lane : two_next_to_target_lanes) {
       {
         const auto lanetag = two_next_to_target_lane.attributeOr("turn_direction", "else");
-        if (lanetag == "right" or lanetag == "left") {
+        if (lanetag == std::string("right") or lanetag == std::string("left")) {
           continue;
         }
       }
