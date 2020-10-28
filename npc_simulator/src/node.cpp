@@ -101,10 +101,6 @@ void NPCSimulatorNode::mainTimerCallback(const ros::TimerEvent &)
 
       // update velocity x
       updateVelocity(&obj, delta_time);
-      // clip velocity
-      const double max_vel = calcMaxSpeed(obj, current_lane_id);
-      const double linear_x = obj.initial_state.twist_covariance.twist.linear.x;
-      const double vel = boost::algorithm::clamp(linear_x, -max_vel, max_vel);
 
       //calculate future position
       npc_simulator::Object * future_obj = new npc_simulator::Object(obj);  //deep copy
@@ -534,7 +530,6 @@ int NPCSimulatorNode::getCurrentLaneletID(
     const auto lane_in_route = lanelet_map_ptr_->laneletLayer.get(lane_id);
     auto besides_lanelets = routing_graph_ptr_->besides(lane_in_route);
     for (const auto & beside_lane : besides_lanelets) {
-      const auto beside_lane_tag = beside_lane.attributeOr("turn_direction", "else");
       if (
         std::find(
           obj_route.data.begin(), obj_route.data.end(), static_cast<int>(beside_lane.id())) !=
