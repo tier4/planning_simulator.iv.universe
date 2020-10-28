@@ -996,7 +996,7 @@ void NPCSimulatorNode::objectCallback(const npc_simulator::Object::ConstPtr & ms
       for (size_t i = 0; i < objects_.size(); ++i) {
         if (objects_.at(i).id.uuid == msg->id.uuid) {
           // publish
-          objects_.at(i).action == npc_simulator::Object::DELETE;
+          objects_.at(i).action = npc_simulator::Object::DELETE;
           const auto dummy_perception_obj_msg = convertObjectMsgToDummyPerception(&objects_.at(i));
           dummy_perception_object_pub_.publish(dummy_perception_obj_msg);
           objects_.erase(objects_.begin() + i);
