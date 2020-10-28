@@ -960,8 +960,8 @@ double NPCSimulator::getNearestZPos(const geometry_msgs::msg::Pose & pose)
   const auto nearest_lanelets = lanelet::geometry::findNearest(
     lanelet_map_ptr_->laneletLayer, search_point, 1);  // distance, lanelet
 
-  if (nearest_lanelets.size() == 0) {
-    // no nearest_lanelets
+  if (nearest_lanelets.empty()) {
+    //no nearest_lanelets
     return 0.0;
   }
 
@@ -1237,8 +1237,9 @@ dummy_perception_publisher::msg::Object NPCSimulator::convertObjectMsgToDummyPer
   output_obj.initial_state.twist_covariance.twist.angular.z = 0;
 
   if (obj->action == npc_simulator::msg::Object::ADD) {
-    // from second time, obj.action must change to MODIFY
+    //from second time, obj.action must change to MODIFY
     obj->action = npc_simulator::msg::Object::MODIFY;
+    usleep(10'000);  //avoid missing msg
   }
   return output_obj;
 }
