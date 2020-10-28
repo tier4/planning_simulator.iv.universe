@@ -284,7 +284,7 @@ bool NPCSimulatorNode::checkValidUTurn(
 {
   // TODO: Is there API to get opposite adjacent lane???
   // get opposite pose
-  geometry_msgs::Pose * turn_pose = new geometry_msgs::Pose(obj_pose);
+  auto * turn_pose = new geometry_msgs::Pose(obj_pose);
   tf2::Quaternion quat;
   tf2::fromMsg(turn_pose->orientation, quat);
   tf2::Quaternion rotate_yaw_pi(0.0, 0.0, 1.0, 0.0);
@@ -878,7 +878,7 @@ double NPCSimulatorNode::getNearestZPos(const geometry_msgs::Pose & pose)
   const auto nearest_lanelets = lanelet::geometry::findNearest(
     lanelet_map_ptr_->laneletLayer, search_point, 1);  // distance, lanelet
 
-  if (nearest_lanelets.size() == 0) {
+  if (nearest_lanelets.empty()) {
     //no nearest_lanelets
     return 0.0;
   }
@@ -1153,7 +1153,7 @@ dummy_perception_publisher::Object NPCSimulatorNode::convertObjectMsgToDummyPerc
   if (obj->action == npc_simulator::Object::ADD) {
     //from second time, obj.action must change to MODIFY
     obj->action = npc_simulator::Object::MODIFY;
-    sleep(0.01);  //avoid missing msg
+    usleep(10'000);  //avoid missing msg
   }
   return output_obj;
 }
