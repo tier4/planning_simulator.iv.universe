@@ -599,7 +599,6 @@ int NPCSimulator::getCurrentLaneletID(
     const auto lane_in_route = lanelet_map_ptr_->laneletLayer.get(lane_id);
     auto besides_lanelets = routing_graph_ptr_->besides(lane_in_route);
     for (const auto & beside_lane : besides_lanelets) {
-      const auto beside_lane_tag = beside_lane.attributeOr("turn_direction", "else");
       if (
         std::find(
           obj_route.data.begin(), obj_route.data.end(), static_cast<int>(beside_lane.id())) !=
