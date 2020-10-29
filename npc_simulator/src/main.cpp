@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <ros/ros.h>
-#include "npc_simulator/node.h"
+#include <rclcpp/rclcpp.hpp>
+#include <npc_simulator/node.h>
 
 int main(int argc, char ** argv)
 {
-  ros::init(argc, argv, "npc_simulator");
+  rclcpp::init(argc, argv, "npc_simulator");
   NPCSimulatorNode node;
 
-  ros::spin();
+  rclcpp::spin();
 
   return 0;
 };

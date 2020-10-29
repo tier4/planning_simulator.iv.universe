@@ -1,92 +1,26 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(npc_simulator)
 
-add_compile_options(-std=c++14)
+### Compile options
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wno-unused-parameter -Wall -Wextra -Wpedantic)
+endif()
 
-find_package(catkin REQUIRED COMPONENTS
-  message_generation
-  roscpp
-  sensor_msgs
-  std_msgs
-  tf2
-  tf2_geometry_msgs
-  tf2_ros
-  autoware_perception_msgs
-  autoware_lanelet2_msgs
-  uuid_msgs
-  unique_id
-  lanelet2_extension
-  dummy_perception_publisher
-)
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 
-add_message_files(
-  DIRECTORY msg
-  FILES
-    LaneChangeDir.msg
-    LaneFollowMode.msg
-    Object.msg
-)
+# message generation
+ament_auto_generate_code()
 
-add_service_files(
-  DIRECTORY srv
-  FILES
-    GetObject.srv
-)
-
-generate_messages(
-  DEPENDENCIES
-    std_msgs
-    geometry_msgs
-    autoware_perception_msgs
-    uuid_msgs
-    dummy_perception_publisher
-)
-
-catkin_package(
-  INCLUDE_DIRS
-    include
-  CATKIN_DEPENDS
-    message_runtime
-    roscpp
-    sensor_msgs
-    tf2
-    tf2_geometry_msgs
-    tf2_ros
-    autoware_perception_msgs
-    autoware_lanelet2_msgs
-    pcl_ros
-    uuid_msgs
-    unique_id
-    lanelet2_extension
-    dummy_perception_publisher
-)
-
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-)
-
-add_executable(npc_simulator_node
+ament_auto_add_executable(npc_simulator_node
   src/main.cpp
   src/node.cpp
 )
 
-add_dependencies(npc_simulator_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-target_link_libraries(npc_simulator_node
-  ${catkin_LIBRARIES}
-)
-
-install(
-  TARGETS
-  npc_simulator_node
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-install(
-  DIRECTORY
-    launch
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+# export information to downstream packages
+ament_auto_package(
+  INSTALL_TO_SHARE launch
 )
