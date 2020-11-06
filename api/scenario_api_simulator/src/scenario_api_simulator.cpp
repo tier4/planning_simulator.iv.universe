@@ -27,17 +27,17 @@ ScenarioAPISimulator::ScenarioAPISimulator() : nh_(""), pnh_("~")
     "get_object");
 
   /* register publisher */
-  pub_object_info_ = pnh_.advertise<npc_simulator::Object>("output/object_info", 1, true);
-  pub_simulator_engage_ = pnh_.advertise<std_msgs::Bool>("output/simulator_engage", 1, true);
-  pub_npc_engage_ = pnh_.advertise<std_msgs::Bool>("output/npc_simulator_engage", 1, true);
+  pub_object_info_ = this->create_publisher<npc_simulator::Object>("output/object_info", 1, true);
+  pub_simulator_engage_ = this->create_publisher<std_msgs::msg::Bool>("output/simulator_engage", 1, true);
+  pub_npc_engage_ = this->create_publisher<std_msgs::msg::Bool>("output/npc_simulator_engage", 1, true);
 
   timer_control_ =
-    pnh_.createTimer(ros::Duration(0.02), &ScenarioAPISimulator::timerCallback, this);
+    pnh_.createTimer(rclcpp::Duration(0.02), &ScenarioAPISimulator::timerCallback, this);
 }
 
 ScenarioAPISimulator::~ScenarioAPISimulator() {}
 
-void ScenarioAPISimulator::timerCallback(const ros::TimerEvent & te) { updateState(); }
+void ScenarioAPISimulator::timerCallback(const rclcpp::TimerEvent & te) { updateState(); }
 
 // basic API
 
@@ -51,13 +51,13 @@ bool ScenarioAPISimulator::isAPIReady()
 
 bool ScenarioAPISimulator::updateState()
 {
-  ros::spinOnce();
+  rclcpp::spinOnce();
   updateNPC();
   return true;
 }
 
 // start API
-bool ScenarioAPISimulator::spawnStartPoint(const geometry_msgs::Pose pose)
+bool ScenarioAPISimulator::spawnStartPoint(const geometry_msgs::msg::Pose pose)
 {
   // spawn vehicle (planning simulator needs nothing)
   return true;
@@ -70,28 +70,28 @@ bool ScenarioAPISimulator::sendEngage(const bool engage)
 
 bool ScenarioAPISimulator::sendSimulatorEngage(const bool engage)
 {
-  std_msgs::Bool boolmsg;
+  std_msgs::msg::Bool boolmsg;
   boolmsg.data = engage;
-  pub_simulator_engage_.publish(boolmsg);
+  pub_simulator_engage_->publish(boolmsg);
   return true;  // TODO check success
 }
 
 bool ScenarioAPISimulator::sendNPCEngage(const bool engage)
 {
-  std_msgs::Bool boolmsg;
+  std_msgs::msg::Bool boolmsg;
   boolmsg.data = engage;
-  pub_npc_engage_.publish(boolmsg);
+  pub_npc_engage_->publish(boolmsg);
   return true;  // TODO check success
 }
 
 // NPC API
 bool ScenarioAPISimulator::addNPC(
-  const std::string & npc_type, const std::string & name, geometry_msgs::Pose pose,
+  const std::string & npc_type, const std::string & name, geometry_msgs::msg::Pose pose,
   const double velocity, const bool stop_by_vehicle, const std::string & frame_type)
 {
   // uuid map check
   if (uuid_map_.find(name) != uuid_map_.end()) {
-    ROS_WARN_STREAM("NPC name :" << name << " already exsists");
+    RCLCPP_WARN_STREAM(get_logger(), "NPC name :" << name << " already exsists");
     return true;
   }
   else {
@@ -103,8 +103,8 @@ bool ScenarioAPISimulator::addNPC(
   {
     #define MAKE_OBJECT(TYPE, ...) \
       getObjectMsg( \
-        autoware_perception_msgs::Semantic::TYPE, 1.0, \
-        autoware_perception_msgs::Shape::BOUNDING_BOX, __VA_ARGS__)
+        autoware_perception_msgs::msg::Semantic::TYPE, 1.0, \
+        autoware_perception_msgs::msg::Shape::BOUNDING_BOX, __VA_ARGS__)
 
     { "car",        MAKE_OBJECT(CAR,        4.0, 1.8, 2.5) },
     { "pedestrian", MAKE_OBJECT(PEDESTRIAN, 0.8, 0.8, 2.0) },
@@ -126,12 +126,12 @@ bool ScenarioAPISimulator::addNPC(
   }
   catch (std::out_of_range&)
   {
-    ROS_WARN("NPC type is invalid. Publish NPC object as unknown type");
+    RCLCPP_WARN(get_logger(), "NPC type is invalid. Publish NPC object as unknown type");
     object = objects.at("unknown");
   }
 
   //get pose with frame_type
-  geometry_msgs::Pose original_pose;
+  geometry_msgs::msg::Pose original_pose;
   original_pose.position = pose.position;
   original_pose.orientation = quatFromYaw(yawFromQuat(pose.orientation)); // ignore roll/pitch information
 
@@ -140,7 +140,7 @@ bool ScenarioAPISimulator::addNPC(
     return false;
   }
 
-  object.header.stamp = ros::Time::now();
+  object.header.stamp = this->now();
   object.header.frame_id = "map";
   object.initial_state = init_state;
   object.initial_state.twist_covariance.twist.linear.x = velocity;
@@ -152,7 +152,7 @@ bool ScenarioAPISimulator::addNPC(
 
   for (npc_simulator::Object result {}; not getNPC(name, result); sleep(0.1))
   {
-    pub_object_info_.publish(object);
+    pub_object_info_->publish(object);
   }
 
   return true;  // TODO check successs
@@ -161,7 +161,7 @@ bool ScenarioAPISimulator::addNPC(
 bool ScenarioAPISimulator::checkValidNPC(const std::string & name)
 {
   if (uuid_map_.find(name) == uuid_map_.end()) {
-    ROS_WARN_STREAM("NPC name :" << name << " does not exist");
+    RCLCPP_WARN_STREAM(get_logger(), "NPC name :" << name << " does not exist");
     return false;
   } else {
     return true;
@@ -169,7 +169,7 @@ bool ScenarioAPISimulator::checkValidNPC(const std::string & name)
 }
 
 bool ScenarioAPISimulator::sendNPCToCheckPoint(
-  const std::string & name, const geometry_msgs::Pose checkpoint_pose, const bool wait_ready,
+  const std::string & name, const geometry_msgs::msg::Pose checkpoint_pose, const bool wait_ready,
   const std::string frame_type)
 {
   npc_simulator::Object obj;
@@ -181,10 +181,10 @@ bool ScenarioAPISimulator::sendNPCToCheckPoint(
     //if obj has minus velocity, do nothing
     return true;
   }
-  geometry_msgs::Pose initial_pose = obj.initial_state.pose_covariance.pose;
+  geometry_msgs::msg::Pose initial_pose = obj.initial_state.pose_covariance.pose;
 
   //get pose with frame_type
-  geometry_msgs::Pose shift_checkpoint_pose;
+  geometry_msgs::msg::Pose shift_checkpoint_pose;
   if (!shiftNPCPose(checkpoint_pose, frame_type, obj, &shift_checkpoint_pose)) {
     return false;
   }
@@ -192,7 +192,7 @@ bool ScenarioAPISimulator::sendNPCToCheckPoint(
   npc_route_manager_->setCheckPoint(name, shift_checkpoint_pose);
 
   //if goal pose is already given, replan route.
-  geometry_msgs::Pose goal_pose;
+  geometry_msgs::msg::Pose goal_pose;
   if (getNPCGoal(name, &goal_pose)) {
     std::vector<int> route;
     if (!npc_route_manager_->planRoute(name, initial_pose, goal_pose, &route)) {
@@ -204,7 +204,7 @@ bool ScenarioAPISimulator::sendNPCToCheckPoint(
 }
 
 bool ScenarioAPISimulator::sendNPCToGoalPoint(
-  const std::string & name, const geometry_msgs::Pose goal_pose, const bool wait_ready,
+  const std::string & name, const geometry_msgs::msg::Pose goal_pose, const bool wait_ready,
   const std::string frame_type)
 {
   npc_simulator::Object obj;
@@ -216,13 +216,13 @@ bool ScenarioAPISimulator::sendNPCToGoalPoint(
     //if obj has minus velocity, do nothing
     return true;
   }
-  geometry_msgs::Pose initial_pose = obj.initial_state.pose_covariance.pose;
+  geometry_msgs::msg::Pose initial_pose = obj.initial_state.pose_covariance.pose;
   if (!getNPCPosition(name, &initial_pose)) {
     return false;
   }
 
   //get pose with frame_type
-  geometry_msgs::Pose shift_goal_pose;
+  geometry_msgs::msg::Pose shift_goal_pose;
   if (!shiftNPCPose(goal_pose, frame_type, obj, &shift_goal_pose)) {
     return false;
   }
@@ -280,7 +280,7 @@ bool ScenarioAPISimulator::changeNPCVelocityWithoutAccel(
   object.action = npc_simulator::Object::MODIFYTWIST;
   object.initial_state.twist_covariance.twist.linear.x = velocity;
   object.target_vel = velocity;
-  pub_object_info_.publish(object);
+  pub_object_info_->publish(object);
   sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
   return true;
 }
@@ -309,7 +309,7 @@ bool ScenarioAPISimulator::changeNPCVelocityWithAccel(
   object.action = npc_simulator::Object::MODIFYACCEL;
   object.target_vel = velocity;
   object.accel = accel;
-  pub_object_info_.publish(object);
+  pub_object_info_->publish(object);
   sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
 
   return true;
@@ -326,7 +326,7 @@ bool ScenarioAPISimulator::changeNPCConsiderVehicle(
   npc_simulator::Object object = getObjectMsg(name);
   object.action = npc_simulator::Object::MODIFYCONSIDERVEHICLE;
   object.stop_by_vehicle = consider_ego_vehicle;
-  pub_object_info_.publish(object);
+  pub_object_info_->publish(object);
   sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
 
   return true;
@@ -347,7 +347,7 @@ bool ScenarioAPISimulator::changeNPCRoute(const std::string & name, const std::v
     object.target_route.data.push_back(lane);
   }
 
-  pub_object_info_.publish(object);
+  pub_object_info_->publish(object);
   sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
 }
 
@@ -361,7 +361,7 @@ bool ScenarioAPISimulator::targetLaneChangeNPC(const std::string & name, const i
   npc_simulator::Object object = getObjectMsg(name);
   object.action = npc_simulator::Object::MODIFYTARGETLANE;
   object.lane_change_id = target_lane_id;
-  pub_object_info_.publish(object);
+  pub_object_info_->publish(object);
   sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
 
   return true;
@@ -377,7 +377,7 @@ bool ScenarioAPISimulator::laneChangeNPC(const std::string & name, const uint8_t
   npc_simulator::Object object = getObjectMsg(name);
   object.action = npc_simulator::Object::MODIFYLANECHANGE;
   object.lane_change_dir.dir = lane_change_dir;
-  pub_object_info_.publish(object);
+  pub_object_info_->publish(object);
   sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
 
   return true;
@@ -413,7 +413,7 @@ bool ScenarioAPISimulator::changeNPCBehavior(const std::string & name, const uin
   npc_simulator::Object object = getObjectMsg(name);
   object.action = npc_simulator::Object::MODIFYTURNDIRECTION;
   object.lane_follow_mode.mode = behavior_mode;
-  pub_object_info_.publish(object);
+  pub_object_info_->publish(object);
   sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
 
   return true;
@@ -489,7 +489,7 @@ bool ScenarioAPISimulator::deleteNPC(const std::string & name)
 
   npc_simulator::Object object = getObjectMsg(name);
   object.action = npc_simulator::Object::DELETE;
-  pub_object_info_.publish(object);
+  pub_object_info_->publish(object);
 
   // delete uuid map
   uuid_map_.erase(name);
@@ -522,7 +522,7 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
 {
   if (!checkValidNPC(name))
   {
-    ROS_WARN_STREAM("Invalid NPC name '" << name << "' requested.");
+    RCLCPP_WARN_STREAM(get_logger(), "Invalid NPC name '" << name << "' requested.");
     return false;
   }
   else
@@ -533,7 +533,7 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
 
     if (not client_.call(srv) or not srv.response.success)
     {
-      ROS_WARN_STREAM("Failed to get NPC");
+      RCLCPP_WARN_STREAM(get_logger(), "Failed to get NPC");
       return false;
     }
     else
@@ -545,8 +545,8 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
 }
 
 bool ScenarioAPISimulator::getNPC(
-  const std::string & name, geometry_msgs::Pose & object_pose, geometry_msgs::Twist & object_twist,
-  geometry_msgs::Vector3 & object_size, std::string & object_name)
+  const std::string & name, geometry_msgs::msg::Pose & object_pose, geometry_msgs::msg::Twist & object_twist,
+  geometry_msgs::msg::Vector3 & object_size, std::string & object_name)
 {
   npc_simulator::Object obj;
 
@@ -561,13 +561,13 @@ bool ScenarioAPISimulator::getNPC(
     object_size  = obj.shape.dimensions;
 
     switch (obj.semantic.type) {
-      case autoware_perception_msgs::Semantic::BICYCLE:    { object_name = "bicycle";    break; }
-      case autoware_perception_msgs::Semantic::BUS:        { object_name = "bus";        break; }
-      case autoware_perception_msgs::Semantic::CAR:        { object_name = "car";        break; }
-      case autoware_perception_msgs::Semantic::MOTORBIKE:  { object_name = "motorbike";  break; }
-      case autoware_perception_msgs::Semantic::PEDESTRIAN: { object_name = "pedestrian"; break; }
-      case autoware_perception_msgs::Semantic::TRUCK:      { object_name = "truck";      break; }
-      case autoware_perception_msgs::Semantic::UNKNOWN:    { object_name = "unknown";    break; }
+      case autoware_perception_msgs::msg::Semantic::BICYCLE:    { object_name = "bicycle";    break; }
+      case autoware_perception_msgs::msg::Semantic::BUS:        { object_name = "bus";        break; }
+      case autoware_perception_msgs::msg::Semantic::CAR:        { object_name = "car";        break; }
+      case autoware_perception_msgs::msg::Semantic::MOTORBIKE:  { object_name = "motorbike";  break; }
+      case autoware_perception_msgs::msg::Semantic::PEDESTRIAN: { object_name = "pedestrian"; break; }
+      case autoware_perception_msgs::msg::Semantic::TRUCK:      { object_name = "truck";      break; }
+      case autoware_perception_msgs::msg::Semantic::UNKNOWN:    { object_name = "unknown";    break; }
 
       default:
         object_name = "else";
@@ -577,7 +577,7 @@ bool ScenarioAPISimulator::getNPC(
   }
 }
 
-bool ScenarioAPISimulator::getNPCPosition(const std::string & name, geometry_msgs::Pose * pose)
+bool ScenarioAPISimulator::getNPCPosition(const std::string & name, geometry_msgs::msg::Pose * pose)
 {
   npc_simulator::Object obj;
   if (!getNPC(name, obj)) {
@@ -610,7 +610,7 @@ bool ScenarioAPISimulator::getNPCAccel(const std::string & name, double * accel)
   return true;
 }
 
-bool ScenarioAPISimulator::getNPCGoal(const std::string & name, geometry_msgs::Pose * pose)
+bool ScenarioAPISimulator::getNPCGoal(const std::string & name, geometry_msgs::msg::Pose * pose)
 {
   return npc_route_manager_->getNPCGoal(name, pose);
 }
@@ -630,13 +630,13 @@ std::unordered_map<std::string, npc_simulator::Object> ScenarioAPISimulator::get
 }
 
 bool ScenarioAPISimulator::shiftNPCPose(
-  const geometry_msgs::Pose & pose, const std::string frame_type, const npc_simulator::Object & obj,
-  geometry_msgs::Pose * shift_pose)
+  const geometry_msgs::msg::Pose & pose, const std::string frame_type, const npc_simulator::Object & obj,
+  geometry_msgs::msg::Pose * shift_pose)
 {
   // shift pose from farame_type to "Center"
 
-  if (obj.shape.type == autoware_perception_msgs::Shape::POLYGON) {
-    ROS_ERROR_STREAM("Now, npc with polygon type is not supported");
+  if (obj.shape.type == autoware_perception_msgs::msg::Shape::POLYGON) {
+    RCLCPP_ERROR_STREAM(get_logger(), "Now, npc with polygon type is not supported");
     return false;
   }
 
@@ -660,7 +660,7 @@ bool ScenarioAPISimulator::shiftNPCPose(
     return true;
   }
 
-  ROS_ERROR_STREAM(
+  RCLCPP_ERROR_STREAM(get_logger(), 
     "shiftEGoPose supports only Center, Front, and Rear as frame_type. "
     << "Now, frame_type is " << frame_type << ".");
   return false;
@@ -682,8 +682,8 @@ npc_simulator::Object ScenarioAPISimulator::getObjectMsg(
 
 npc_simulator::Object ScenarioAPISimulator::getObjectMsg(std::string npc_name, std::string frame_id)
 {
-  std_msgs::Header header;
-  header.stamp = ros::Time::now();
+  std_msgs::msg::Header header;
+  header.stamp = this->now();
   header.frame_id = frame_id;
 
   npc_simulator::Object object;
@@ -719,7 +719,7 @@ bool ScenarioAPISimulator::inputNPCStopState(std::unordered_map<std::string, boo
 // traffic light API
 bool ScenarioAPISimulator::setTrafficLight(int traffic_id, std::string traffic_color)
 {
-  ROS_WARN("setTrafficLight is not implemented yet.");
+  RCLCPP_WARN(get_logger(), "setTrafficLight is not implemented yet.");
   // TODO
   return false;
 }

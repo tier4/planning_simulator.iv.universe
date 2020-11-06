@@ -17,10 +17,10 @@
 #ifndef NPC_ROUTE_MANAGER_H_INCLUDED
 #define NPC_ROUTE_MANAGER_H_INCLUDED
 
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <geometry_msgs/TwistStamped.h>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/geometry/BoundingBox.h>
 #include <lanelet2_core/geometry/Lanelet.h>
@@ -30,7 +30,7 @@
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 #include <npc_simulator/Object.h>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 #include <unordered_map>
 
@@ -70,21 +70,21 @@ public:
    * @brief search route from initial_pose to goal_pose with checkpoint
    */
   bool planRoute(
-    const std::string & name, const geometry_msgs::Pose initial_pose,
-    const geometry_msgs::Pose goal_pose, std::vector<int> * const route);
+    const std::string & name, const geometry_msgs::msg::Pose initial_pose,
+    const geometry_msgs::msg::Pose goal_pose, std::vector<int> * const route);
 
   /**
    * @brief search route from initial_pose to goal_pose
    */
   bool planPathBetweenCheckpoints(
-    const geometry_msgs::Pose & start_checkpoint, const geometry_msgs::Pose & goal_checkpoint,
+    const geometry_msgs::msg::Pose & start_checkpoint, const geometry_msgs::msg::Pose & goal_checkpoint,
     lanelet::ConstLanelets * path_lanelets_ptr);
 
   /**
    * @brief set npc check point.
    */
 
-  bool setCheckPoint(const std::string & name, const geometry_msgs::Pose checkpoint_pose);
+  bool setCheckPoint(const std::string & name, const geometry_msgs::msg::Pose checkpoint_pose);
 
   /**
    * @brief decide npc lane follow state(go straight, turn left, turn light)
@@ -101,12 +101,10 @@ public:
   /**
    * @brief get npc goal position
    */
-  bool getNPCGoal(const std::string & name, geometry_msgs::Pose * pose);
+  bool getNPCGoal(const std::string & name, geometry_msgs::msg::Pose * pose);
 
 private:
-  ros::NodeHandle nh_;       //!< @brief ros node handle
-  ros::NodeHandle pnh_;      //!< @brief private ros node handle
-  ros::Subscriber sub_map_;  //!< @brief topic subscriber for map
+  rclcpp::Subscription<FIXME>::SharedPtr sub_map_;  //!< @brief topic subscriber for map
 
   // lanelet
   std::shared_ptr<lanelet::LaneletMap> lanelet_map_ptr_;
@@ -115,23 +113,23 @@ private:
   std::shared_ptr<lanelet::Lanelet> closest_lanelet_ptr_;
 
   std::unordered_map<std::string, bool> npc_stop_state_;
-  std::unordered_map<std::string, geometry_msgs::Pose> npc_goal_map_;
+  std::unordered_map<std::string, geometry_msgs::msg::Pose> npc_goal_map_;
   std::unordered_map<std::string, lanelet::ConstLanelets> npc_lane_map_;
-  std::unordered_map<std::string, std::vector<geometry_msgs::Pose>> npc_checkpoints_map_;
+  std::unordered_map<std::string, std::vector<geometry_msgs::msg::Pose>> npc_checkpoints_map_;
 
-  void callbackMap(const autoware_lanelet2_msgs::MapBin & msg);
+  void callbackMap(const autoware_lanelet2_msgs::msg::MapBin & msg);
   bool getClosestLanelet(
-    const geometry_msgs::Pose current_pose, const lanelet::LaneletMapPtr & lanelet_map_ptr,
+    const geometry_msgs::msg::Pose current_pose, const lanelet::LaneletMapPtr & lanelet_map_ptr,
     lanelet::Lanelet * closest_lanelet, double max_dist = 10.0,
     double max_delta_yaw = boost::math::constants::pi<double>() / 4.0);
   bool getClosestLaneletWithRoutes(
-    const geometry_msgs::Pose current_pose, const lanelet::LaneletMapPtr & lanelet_map_ptr,
+    const geometry_msgs::msg::Pose current_pose, const lanelet::LaneletMapPtr & lanelet_map_ptr,
     lanelet::Lanelet * closest_lanelet, lanelet::ConstLanelets routes, double max_dist = 20.0,
     double max_delta_yaw = boost::math::constants::pi<double>());
   uint8_t decideNPCLaneFollowDir(
-    lanelet::ConstLanelets routes, std::string npc_name, geometry_msgs::Pose npc_pose);
+    lanelet::ConstLanelets routes, std::string npc_name, geometry_msgs::msg::Pose npc_pose);
   bool isGoal(
-    const geometry_msgs::Pose goal_pose, const geometry_msgs::Pose npc_pose, const double npc_vel,
+    const geometry_msgs::msg::Pose goal_pose, const geometry_msgs::msg::Pose npc_pose, const double npc_vel,
     const double thresh_dist = 0.5,
     const double thresh_delta_yaw = boost::math::constants::pi<double>());
 

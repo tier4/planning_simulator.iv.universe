@@ -17,11 +17,12 @@
 #ifndef SCENARIO_API_SCENARIO_API_SIMULATOR_H_INCLUDED
 #define SCENARIO_API_SCENARIO_API_SIMULATOR_H_INCLUDED
 
-#include <dummy_perception_publisher/InitialState.h>
+// TODO really needed?
+//#include <dummy_perception_publisher/InitialState.h>
 #include <npc_simulator/GetObject.h>
 #include <npc_simulator/Object.h>
-#include <ros/ros.h>
-#include <std_msgs/Bool.h>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <tf2/convert.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <unique_id/unique_id.h>
@@ -54,7 +55,7 @@ public:
   bool updateState();  // update state //TODO
 
   // start API
-  bool spawnStartPoint(const geometry_msgs::Pose pose);  // spawn vehicle at start point
+  bool spawnStartPoint(const geometry_msgs::msg::Pose pose);  // spawn vehicle at start point
   bool sendEngage(const bool engage);                    //engage simulator and npc
   bool sendSimulatorEngage(const bool engage);           //engage simulator
   bool sendNPCEngage(const bool engage);                 //engage npc
@@ -62,21 +63,21 @@ public:
   // NPC API
   bool getNPC(const std::string & name, npc_simulator::Object & obj);
   bool getNPC(
-    const std::string & name, geometry_msgs::Pose & object_pose,
-    geometry_msgs::Twist & object_twist, geometry_msgs::Vector3 & object_size,
+    const std::string & name, geometry_msgs::msg::Pose & object_pose,
+    geometry_msgs::msg::Twist & object_twist, geometry_msgs::msg::Vector3 & object_size,
     std::string & object_name);
-  bool getNPCPosition(const std::string & name, geometry_msgs::Pose * pose);
+  bool getNPCPosition(const std::string & name, geometry_msgs::msg::Pose * pose);
   bool getNPCVelocity(const std::string & name, double * velocity);
   bool getNPCAccel(const std::string & name, double * accel);
-  bool getNPCGoal(const std::string & name, geometry_msgs::Pose * pose);
+  bool getNPCGoal(const std::string & name, geometry_msgs::msg::Pose * pose);
   bool addNPC(
-    const std::string & npc_type, const std::string & name, geometry_msgs::Pose pose,
+    const std::string & npc_type, const std::string & name, geometry_msgs::msg::Pose pose,
     const double velocity, const bool stop_by_vehicle, const std::string & frame_type);
   bool sendNPCToCheckPoint(
-    const std::string & name, const geometry_msgs::Pose checkpoint_pose, const bool wait_ready,
+    const std::string & name, const geometry_msgs::msg::Pose checkpoint_pose, const bool wait_ready,
     const std::string frame_type);
   bool sendNPCToGoalPoint(
-    const std::string & name, const geometry_msgs::Pose pose, const bool wait_ready,
+    const std::string & name, const geometry_msgs::msg::Pose pose, const bool wait_ready,
     const std::string frame_type);
   bool changeNPCVelocity(const std::string & name, const double velocity);
   bool changeNPCVelocityWithoutAccel(const std::string & name, const double velocity);
@@ -100,31 +101,30 @@ public:
 
   //NPC API (tools)
   bool shiftNPCPose(
-    const geometry_msgs::Pose & pose, const std::string frame_type,
-    const npc_simulator::Object & obj, geometry_msgs::Pose * shift_pose);
+    const geometry_msgs::msg::Pose & pose, const std::string frame_type,
+    const npc_simulator::Object & obj, geometry_msgs::msg::Pose * shift_pose);
 
   // traffic light API
   bool setTrafficLight(int traffic_id, std::string traffic_color);  // future work //TODO
 
 private:
-  ros::NodeHandle nh_;                   //!< @brief ros node handle
-  ros::NodeHandle pnh_;                  //!< @brief private ros node handle
-  ros::ServiceClient client_;            //!< @brief private ros service client
-  ros::Publisher pub_object_info_;       //!< @brief topic pubscriber for npc
-  ros::Publisher pub_simulator_engage_;  //!< @brief topic pubscriber for vehicle engage
-  ros::Publisher pub_npc_engage_;        //!< @brief topic pubscriber for npc simulator engage
-  ros::Timer timer_control_;             //!< @brief timer for getting self-position
-  std::unordered_map<std::string, uuid_msgs::UniqueID> uuid_map_;
+  rclcpp::Client<FIXME>::SharedPtr client_;            //!< @brief private ros service client
+  rclcpp::Publisher<FIXME>::SharedPtr pub_object_info_;       //!< @brief topic pubscriber for npc
+  rclcpp::Publisher<FIXME>::SharedPtr pub_simulator_engage_;  //!< @brief topic pubscriber for vehicle engage
+  rclcpp::Publisher<FIXME>::SharedPtr pub_npc_engage_;        //!< @brief topic pubscriber for npc simulator engage
+  rclcpp::TimerBase::SharedPtr timer_control_;             //!< @brief timer for getting self-position
+  std::unordered_map<std::string, uuid_msgs::msg::UniqueID> uuid_map_;
   std::unordered_map<std::string, double> maxacc_map_;
   std::unordered_map<std::string, double> minacc_map_;
   std::shared_ptr<NPCRouteManager> npc_route_manager_;
 
-  void timerCallback(const ros::TimerEvent & te);
+  void timerCallback(const rclcpp::TimerEvent & te);
   void updateNPC();
   npc_simulator::Object getObjectMsg(
     uint32_t semantic_type, double confidence, uint8_t shape_type, double size_x, double size_y,
     double size_z);
   std::unordered_map<std::string, npc_simulator::Object> getNPCInfo();
+  o
   npc_simulator::Object getObjectMsg(std::string npc_name, std::string frame_id = "map");
   bool checkValidNPC(const std::string & name);
   bool changeNPCRoute(const std::string & name, const std::vector<int> route);
