@@ -28,8 +28,11 @@ typedef bg::model::polygon<Point> Polygon;
 
 NPCSimulatorNode::NPCSimulatorNode() : nh_(), pnh_("~"), tf_listener_(tf_buffer_)
 {
+  using std::placeholders::_1;
+  using std::placeholders::_2;
+
   // get parameter
-  pnh_.param<bool>("initial_engage_state", engage_state_, true);
+  this->param<bool>("initial_engage_state", engage_state_, true);
 
   // get vehicle parameter
   vehicle_width_ = waitForParam<double>(pnh_, "/vehicle_info/vehicle_width");
@@ -38,20 +41,25 @@ NPCSimulatorNode::NPCSimulatorNode() : nh_(), pnh_("~"), tf_listener_(tf_buffer_
   vehicle_base2center_ = vehicle_length_ / 2.0 - vehicle_rear_overhang_;
 
   dummy_perception_object_pub_ =
-    this->create_publisher<dummy_perception_publisher::Object>("output/dynamic_object_info", 10, true);
-  debug_object_pub_ = pnh_.advertise<autoware_perception_msgs::msg::DynamicObjectArray>(
+    this->create_publisher<dummy_perception_publisher::msg::object>("output/dynamic_object_info",
+        10, true);
+  debug_object_pub_ = this->advertise<autoware_perception_msgs::msg::DynamicObjectArray>(
     "output/debug_object_info", 10, true);
 
   // register callback
-  engage_sub_ = this->create_subscription<TODO>("input/engage", 100, &NPCSimulatorNode::engageCallback, this);
-  object_sub_ = this->create_subscription<TODO>("input/object", 100, &NPCSimulatorNode::objectCallback, this);
-  map_sub_ = this->create_subscription<TODO>("input/vector_map", 1, &NPCSimulatorNode::mapCallback, this);
-  pose_sub_ = this->create_subscription<TODO>("input/ego_vehicle_pose", 1, &NPCSimulatorNode::poseCallback, this);
-  getobject_srv_ = this->create_service<TODO>("get_object", &NPCSimulatorNode::getObject, this);
+  engage_sub_ = this->create_subscription<std_msgs::msg::Bool>("input/engage", 100, &NPCSimulatorNode::engageCallback, this);
+  object_sub_ = this->create_subscription<npc_simulator::msg::object>("input/object", 100,
+      &NPCSimulatorNode::objectCallback, this);
+  map_sub_ = this->create_subscription<autoware_lanelet2_msgs::msg::map_bin>("input/vector_map",
+      1, &NPCSimulatorNode::mapCallback, this);
+  pose_sub_ = this->create_subscription<geometry_msgs::msg::pose_stamped>
+      ("input/ego_vehicle_pose", 1, &NPCSimulatorNode::poseCallback, this);
+  getobject_srv_ = this->create_service<npc_simulator::GetObject::Request>("get_object", std::bind
+      (&NPCSimulatorNode::getObject, this, _1, _2));
 
-  timer_main_ = nh_.createTimer(rclcpp::Duration(0.1), &NPCSimulatorNode::mainTimerCallback, this);
+  timer_main_ = this->createTimer(rclcpp::Duration(0.1), &NPCSimulatorNode::mainTimerCallback, this);
   timer_pub_info_ =
-    nh_.createTimer(rclcpp::Duration(0.02), &NPCSimulatorNode::pubInfoTimerCallback, this);
+    this->createTimer(rclcpp::Duration(0.02), &NPCSimulatorNode::pubInfoTimerCallback, this);
 }
 
 bool NPCSimulatorNode::getObject(
