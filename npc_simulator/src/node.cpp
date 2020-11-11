@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <npc_simulator/node.h>
+#include "npc_simulator/node.h"
+#include <lanelet2_extension/utility/message_conversion.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <boost/geometry.hpp>
@@ -67,27 +68,27 @@ NPCSimulatorNode::NPCSimulatorNode() :
       ("input/ego_vehicle_pose", single_element_in_queue,
           std::bind(&NPCSimulatorNode::poseCallback, this, _1));
   getobject_srv_ = create_service<npc_simulator::srv::GetObject>("get_object",
-      std::bind
-      (&NPCSimulatorNode::getObject, this, _1, _2));
+      std::bind(&NPCSimulatorNode::getObject, this, _1, _2));
 
   timer_main_ = initTimer(rclcpp::Duration(0.1), &NPCSimulatorNode::mainTimerCallback);
   timer_pub_info_ =
     initTimer(rclcpp::Duration(0.02), &NPCSimulatorNode::pubInfoTimerCallback);
 }
 
-bool NPCSimulatorNode::getObject(
-  npc_simulator::srv::GetObject::Request & req, npc_simulator::srv::GetObject::Response & res)
+bool NPCSimulatorNode::getObject(const npc_simulator::srv::GetObject::Request::SharedPtr req,
+               const npc_simulator::srv::GetObject::Response::SharedPtr
+               res)
 {
-  unique_identifier_msgs::msg::UUID id = req.object_id;
+  unique_identifier_msgs::msg::UUID id = req->object_id;
   for (const auto & obj : objects_) {
     if (boost::equal(obj.id.uuid, id.uuid)) {
-      res.object = obj;
-      res.success = true;
+      res->object = obj;
+      res->success = true;
       return true;
     }
   }
-  // no corresponded object
-  res.success = false;
+  // no corresponding object
+  res->success = false;
   return false;
 }
 
@@ -780,9 +781,10 @@ double NPCSimulatorNode::calcSpeedToAvoidCollision(const double col_dist)
 {
   if (col_dist <= margin_dist_to_avoid_collision_) {
     return 0.0;
-
-    return (col_dist - margin_dist_to_avoid_collision_) / margin_time_to_avoid_collision_;
   }
+
+  // TODO probably was a bug before: 2nd return never executed
+  return (col_dist - margin_dist_to_avoid_collision_) / margin_time_to_avoid_collision_;
 }
 
 double NPCSimulatorNode::getFollowLaneDiffYaw(
@@ -1070,7 +1072,7 @@ void NPCSimulatorNode::mapCallback(const autoware_lanelet2_msgs::msg::MapBin::Co
   RCLCPP_INFO(get_logger(), "Start loading lanelet");
   lanelet_map_ptr_ = std::make_shared<lanelet::LaneletMap>();
   lanelet::utils::conversion::fromBinMsg(
-    msg, lanelet_map_ptr_, &traffic_rules_ptr_, &routing_graph_ptr_);
+    *msg, lanelet_map_ptr_, &traffic_rules_ptr_, &routing_graph_ptr_);
   RCLCPP_INFO(get_logger(), "Map is loaded");
 }
 
@@ -1131,7 +1133,8 @@ autoware_perception_msgs::msg::DynamicObjectArray NPCSimulatorNode::convertObjec
 
     //position prediction for smooth visualization
     if (prediction && engage_state_) {
-      const double dt = (output_msg.header.stamp - obj.header.stamp).toSec();
+      const double dt = (rclcpp::Time(output_msg.header.stamp) - rclcpp::Time(obj.header.stamp))
+          .seconds();
       const double obj_yaw = tf2::getYaw(obj.initial_state.pose_covariance.pose.orientation);
       const double vel_hor = autoware_obj.state.twist_covariance.twist.linear.x;
       const double vel_ver = autoware_obj.state.twist_covariance.twist.linear.z;
@@ -1152,11 +1155,9 @@ rclcpp::TimerBase::SharedPtr NPCSimulatorNode::initTimer(const rclcpp::Duration 
     void (NPCSimulatorNode::*ptr_to_member_fn)(void))
 {
   auto timer_callback = std::bind(ptr_to_member_fn, this);
-//  const auto period_ns =
-//    std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(duration));
   rclcpp::TimerBase::SharedPtr timer = std::make_shared<rclcpp::GenericTimer<decltype
       (timer_callback)>>(
-    this->get_clock(), duration.nanoseconds(), std::move(timer_callback),
+    this->get_clock(), std::chrono::nanoseconds{duration.nanoseconds()}, std::move(timer_callback),
     this->get_node_base_interface()->get_context());
   this->get_node_timers_interface()->add_timer(timer, nullptr);
   return timer;

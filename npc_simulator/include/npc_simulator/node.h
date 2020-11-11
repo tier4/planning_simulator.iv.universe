@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
+// TODO run convertonce
 #pragma once
+
+#include <npc_simulator/msg/object.hpp>
+#include <npc_simulator/srv/get_object.hpp>
+
 #include <autoware_lanelet2_msgs/msg/map_bin.hpp>
 #include <autoware_perception_msgs/msg/dynamic_object_array.hpp>
 #include <dummy_perception_publisher/msg/object.hpp>
-#include <npc_simulator/srv/get_object.hpp>
-#include "npc_simulator/msg/object.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/bool.hpp>
@@ -122,8 +125,8 @@ private:
   void inputVelocityZ(
     npc_simulator::msg::Object * obj, const double prev_z_pos, const double delta_time);
 
-  bool getObject(npc_simulator::srv::GetObject::Request & req,
-      npc_simulator::srv::GetObject::Response &
+  bool getObject(const npc_simulator::srv::GetObject::Request::SharedPtr req,
+      const npc_simulator::srv::GetObject::Response::SharedPtr
   res);
   void engageCallback(const std_msgs::msg::Bool::ConstSharedPtr engage);
   void objectCallback(const npc_simulator::msg::Object::ConstSharedPtr msg);
