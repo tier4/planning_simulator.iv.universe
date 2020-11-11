@@ -1,6 +1,6 @@
 std_msgs/Header header
 # TODO reenable. Fails with `rosidl_adapter.parser.InvalidFieldDefinition`
-# unique_identifier_msgs/UUID
+unique_identifier_msgs/UUID id
 dummy_perception_publisher/InitialState initial_state
 sensor_msgs/Imu imu
 autoware_perception_msgs/Semantic semantic

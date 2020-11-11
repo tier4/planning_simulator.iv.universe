@@ -1,4 +1,4 @@
-uuid_msgs/UniqueID object_id
+unique_identifier_msgs/UUID object_id
 ---
 bool success
 npc_simulator/Object object

@@ -26,7 +26,10 @@ set(msg_files
   "msg/LaneFollowMode.msg"
   "msg/Object.msg"
 )
-# TODO std_msgs are deprecated
+set(service_files
+    "srv/GetObject.srv"
+)
+# TODO std_msgs deprecated?
 set(msg_dependencies
   autoware_perception_msgs
   dummy_perception_publisher
@@ -36,6 +39,7 @@ set(msg_dependencies
   )
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${msg_files}
+  ${service_files}
   DEPENDENCIES ${msg_dependencies}
   )
 ament_export_dependencies(rosidl_default_runtime)
