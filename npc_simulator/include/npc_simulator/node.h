@@ -20,12 +20,6 @@
 #include <npc_simulator/msg/object.hpp>
 #include <npc_simulator/srv/get_object.hpp>
 
-#include <autoware_lanelet2_msgs/msg/map_bin.hpp>
-#include <autoware_perception_msgs/msg/dynamic_object_array.hpp>
-#include <dummy_perception_publisher/msg/object.hpp>
-#include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <std_msgs/msg/bool.hpp>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2/convert.h>
 #include <tf2/transform_datatypes.h>
@@ -33,12 +27,19 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
+#include <autoware_lanelet2_msgs/msg/map_bin.hpp>
+#include <autoware_perception_msgs/msg/dynamic_object_array.hpp>
 #include <boost/algorithm/clamp.hpp>
 #include <boost/math/special_functions/sign.hpp>
+#include <dummy_perception_publisher/msg/object.hpp>
 #include <memory>
 #include <random>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <tuple>
 
+// TODO move to impl as much as possible
 // lanelet
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_extension/utility/message_conversion.h>
@@ -48,8 +49,9 @@ class NPCSimulatorNode : public rclcpp::Node
 {
 private:
   rclcpp::Publisher<dummy_perception_publisher::msg::Object>::SharedPtr
-  dummy_perception_object_pub_;
-  rclcpp::Publisher<autoware_perception_msgs::msg::DynamicObjectArray>::SharedPtr debug_object_pub_;  // for
+    dummy_perception_object_pub_;
+  rclcpp::Publisher<autoware_perception_msgs::msg::DynamicObjectArray>::SharedPtr
+    debug_object_pub_;  // for
   // visualization
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr engage_sub_;
   rclcpp::Subscription<npc_simulator::msg::Object>::SharedPtr object_sub_;
@@ -114,7 +116,8 @@ private:
     const double max_yaw_rate = boost::math::constants::pi<double>() * 1.0);
   double getNearestZPos(const geometry_msgs::msg::Pose & pose);
   double calcSmoothZPos(
-    geometry_msgs::msg::Point current_point, geometry_msgs::msg::Point p1, geometry_msgs::msg::Point p2);
+    geometry_msgs::msg::Point current_point, geometry_msgs::msg::Point p1,
+    geometry_msgs::msg::Point p2);
   bool calcCollisionDistance(const npc_simulator::msg::Object & obj, double * col_dist);
   geometry_msgs::msg::Pose getRelativePose(
     const geometry_msgs::msg::Pose & source, const geometry_msgs::msg::Pose & target);
@@ -125,15 +128,15 @@ private:
   void inputVelocityZ(
     npc_simulator::msg::Object * obj, const double prev_z_pos, const double delta_time);
 
-  bool getObject(const npc_simulator::srv::GetObject::Request::SharedPtr req,
-      const npc_simulator::srv::GetObject::Response::SharedPtr
-  res);
+  bool getObject(
+    const npc_simulator::srv::GetObject::Request::SharedPtr req,
+    const npc_simulator::srv::GetObject::Response::SharedPtr res);
   void engageCallback(const std_msgs::msg::Bool::ConstSharedPtr engage);
   void objectCallback(const npc_simulator::msg::Object::ConstSharedPtr msg);
   void mapCallback(const autoware_lanelet2_msgs::msg::MapBin::ConstSharedPtr msg);
   void poseCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
-  dummy_perception_publisher::msg::Object convertObjectMsgToDummyPerception
-  (npc_simulator::msg::Object * obj);
+  dummy_perception_publisher::msg::Object convertObjectMsgToDummyPerception(
+    npc_simulator::msg::Object * obj);
   autoware_perception_msgs::msg::DynamicObjectArray convertObjectMsgToAutowarePerception(
     const std::vector<npc_simulator::msg::Object> & obj_vec, const bool prediction);
 
@@ -202,7 +205,8 @@ private:
    *
    * @return the timer
    */
-  rclcpp::TimerBase::SharedPtr initTimer(const rclcpp::Duration & duration, void (NPCSimulatorNode::*ptr_to_member_fn)(void));
+  rclcpp::TimerBase::SharedPtr initTimer(
+    const rclcpp::Duration & duration, void (NPCSimulatorNode::*ptr_to_member_fn)(void));
 
 public:
   NPCSimulatorNode();

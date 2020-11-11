@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 #include <npc_simulator/node.h>
+
 #include <rclcpp/rclcpp.hpp>
+
 #include <memory>
 
 int main(int argc, char ** argv)
