@@ -1,57 +1,51 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(scenario_api_simulator)
 
-add_compile_options(-std=c++14)
+### Compile options
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wno-unused-parameter -Wall -Wextra -Wpedantic)
+endif()
 
-find_package(catkin REQUIRED COMPONENTS
-  sensor_msgs
-  geometry_msgs
-  std_msgs
-  autoware_planning_msgs
-  autoware_system_msgs
-  autoware_perception_msgs
-  autoware_vehicle_msgs
-  npc_simulator
-  roscpp
-  tf2_ros
-  pcl_ros
-  pcl_conversions
-  lanelet2_extension
-  scenario_api_utils
-)
-
-catkin_package(
- INCLUDE_DIRS include
- LIBRARIES scenario_api_simulator
- CATKIN_DEPENDS scenario_api_utils sensor_msgs geometry_msgs std_msgs autoware_planning_msgs autoware_system_msgs autoware_perception_msgs autoware_vehicle_msgs npc_simulator roscpp tf2_ros pcl_ros pcl_conversions lanelet2_extension
-)
-
-include_directories(
-include
-${catkin_INCLUDE_DIRS}
-)
+find_package(ament_cmake REQUIRED)
+find_package(autoware_lanelet2_msgs REQUIRED)
+find_package(autoware_perception_msgs REQUIRED)
+find_package(dummy_perception_publisher REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(lanelet2_extension REQUIRED)
+find_package(npc_simulator REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(scenario_api_utils REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(unique_identifier_msgs REQUIRED)
 
 add_library(scenario_api_simulator SHARED
-src/scenario_api_simulator.cpp
-src/npc_route_manager.cpp
+  src/scenario_api_simulator.cpp
+  src/npc_route_manager.cpp
+)
+target_include_directories(scenario_api_simulator PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
 )
 
-add_dependencies(scenario_api_simulator
- ${${PROJECT_NAME}_EXPORTED_TARGETS}
- ${catkin_EXPORTED_TARGETS}
- )
+ament_target_dependencies(scenario_api_simulator autoware_perception_msgs dummy_perception_publisher geometry_msgs lanelet2_extension npc_simulator rclcpp scenario_api_utils std_msgs tf2 unique_identifier_msgs)
 
-target_link_libraries(scenario_api_simulator
- ${catkin_LIBRARIES}
- ${YAML_CPP_LIBRARIES}
-)
+ament_export_targets(export_scenario_api_simulator HAS_LIBRARY_TARGET)
+ament_export_dependencies(autoware_perception_msgs geometry_msgs npc_simulator rclcpp std_msgs unique_identifier_msgs)
 
 install(TARGETS scenario_api_simulator
-ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+  EXPORT export_scenario_api_simulator
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
 )
 
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+install(DIRECTORY include/
+  DESTINATION include
 )
+
+ament_package()
