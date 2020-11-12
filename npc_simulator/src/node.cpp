@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 #include "npc_simulator/node.h"
+
 #include <lanelet2_extension/utility/message_conversion.h>
+
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/linestring.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
@@ -28,7 +31,10 @@ typedef bg::model::linestring<Point> Line;
 typedef bg::model::polygon<Point> Polygon;
 
 NPCSimulatorNode::NPCSimulatorNode()
-: rclcpp::Node("npc_simulator"), tf_buffer_(get_clock()), tf_listener_(tf_buffer_)
+: rclcpp::Node("npc_simulator"),
+  tf_buffer_(get_clock()),
+  tf_listener_(tf_buffer_),
+  vehicle_info_(vehicle_info_util::VehicleInfo::create(*this))
 {
   using std::placeholders::_1;
   using std::placeholders::_2;
@@ -36,12 +42,20 @@ NPCSimulatorNode::NPCSimulatorNode()
   // get parameter
   engage_state_ = declare_parameter<bool>("initial_engage_state", true);
 
-  // TODO Nikolai had another solution for the vehicle dimensions??
   // get vehicle parameter
-  vehicle_width_ = waitForParam<double>("/vehicle_info/vehicle_width");
-  vehicle_length_ = waitForParam<double>("/vehicle_info/vehicle_length");
-  vehicle_rear_overhang_ = waitForParam<double>("/vehicle_info/rear_overhang");
-  vehicle_base2center_ = vehicle_length_ / 2.0 - vehicle_rear_overhang_;
+  double wheel_tread{}, left_overhang{}, right_overhang{};
+  assert(get_parameter("wheel_tread", wheel_tread));
+  assert(get_parameter("left_overhang", left_overhang));
+  assert(get_parameter("right_overhang", right_overhang));
+  vehicle_width_ = wheel_tread + left_overhang + right_overhang;
+
+  double wheel_base{}, front_overhang{}, rear_overhang{};
+  assert(get_parameter("wheel_base", wheel_base));
+  assert(get_parameter("front_overhang", front_overhang));
+  assert(get_parameter("rear_overhang", rear_overhang));
+  vehicle_length_ = wheel_base + front_overhang + rear_overhang;
+
+  vehicle_base2center_ = vehicle_length_ / 2.0 - rear_overhang;
 
   static constexpr std::size_t single_element_in_queue = 1;
   static constexpr std::size_t small_queue_size = 10;
@@ -124,11 +138,6 @@ void NPCSimulatorNode::mainTimerCallback()
 
       // update velocity x
       updateVelocity(&obj, delta_time);
-      // TODO remove because `vel` unused
-      // clip velocity
-      //      const double max_vel = calcMaxSpeed(obj, current_lane_id);
-      //      const double linear_x = obj.initial_state.twist_covariance.twist.linear.x;
-      //      const double vel = boost::algorithm::clamp(linear_x, -max_vel, max_vel);
 
       //calculate future position
       npc_simulator::msg::Object * future_obj = new npc_simulator::msg::Object(obj);  //deep copy
@@ -790,7 +799,6 @@ double NPCSimulatorNode::calcSpeedToAvoidCollision(const double col_dist)
     return 0.0;
   }
 
-  // TODO probably was a bug before: 2nd return never executed
   return (col_dist - margin_dist_to_avoid_collision_) / margin_time_to_avoid_collision_;
 }
 
@@ -956,7 +964,6 @@ void NPCSimulatorNode::objectCallback(const npc_simulator::msg::Object::ConstSha
       for (size_t i = 0; i < objects_.size(); ++i) {
         if (objects_.at(i).id.uuid == msg->id.uuid) {
           // publish
-          // TODO Bug before was `==` instead of `=`. Caught by -Werror=unused-value
           objects_.at(i).action = npc_simulator::msg::Object::DELETE;
           const auto dummy_perception_obj_msg = convertObjectMsgToDummyPerception(&objects_.at(i));
           dummy_perception_object_pub_->publish(dummy_perception_obj_msg);

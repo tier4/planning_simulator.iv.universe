@@ -14,11 +14,17 @@
  * limitations under the License.
  */
 
-// TODO run convertonce
 #pragma once
 
 #include <npc_simulator/msg/object.hpp>
 #include <npc_simulator/srv/get_object.hpp>
+
+#include <lanelet2_core/geometry/Lanelet.h>
+#include <lanelet2_extension/utility/utilities.h>
+#include <autoware_lanelet2_msgs/msg/map_bin.hpp>
+#include <autoware_perception_msgs/msg/dynamic_object_array.hpp>
+#include <dummy_perception_publisher/msg/object.hpp>
+#include <vehicle_info_util/vehicle_info.hpp>
 
 #include <tf2/LinearMath/Transform.h>
 #include <tf2/convert.h>
@@ -27,23 +33,17 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
-#include <autoware_lanelet2_msgs/msg/map_bin.hpp>
-#include <autoware_perception_msgs/msg/dynamic_object_array.hpp>
-#include <boost/algorithm/clamp.hpp>
-#include <boost/math/special_functions/sign.hpp>
-#include <dummy_perception_publisher/msg/object.hpp>
-#include <memory>
-#include <random>
+
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/bool.hpp>
-#include <tuple>
 
-// TODO move to impl as much as possible
-// lanelet
-#include <lanelet2_core/geometry/Lanelet.h>
-#include <lanelet2_extension/utility/message_conversion.h>
-#include <lanelet2_extension/utility/utilities.h>
+#include <boost/algorithm/clamp.hpp>
+#include <boost/math/special_functions/sign.hpp>
+
+#include <memory>
+#include <random>
+#include <tuple>
 
 class NPCSimulatorNode : public rclcpp::Node
 {
@@ -63,6 +63,7 @@ private:
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
   std::vector<npc_simulator::msg::Object> objects_;
+  vehicle_info_util::VehicleInfo vehicle_info_;
 
   //simulation state
   bool engage_state_;
@@ -71,7 +72,6 @@ private:
   geometry_msgs::msg::PoseStamped ego_pose_;
   double vehicle_width_;
   double vehicle_length_;
-  double vehicle_rear_overhang_;
   double vehicle_base2center_;
 
   // lanelet
@@ -175,26 +175,6 @@ private:
   const double max_delta_yaw_without_target_ = boost::math::constants::pi<double>() / 3.0;
   const double max_dist_uturn_ = 10.0;
   const double max_delta_yaw_uturn_ = boost::math::constants::pi<double>() / 3.0;
-
-  template <class T>
-  T waitForParam(const std::string & key)
-  {
-    T value;
-    rclcpp::Rate rate(1.0);
-
-    while (rclcpp::ok()) {
-      // TODO does this check in other nodes as well?
-      const auto result = get_parameter<T>(key, value);
-      if (result) {
-        return value;
-      }
-
-      RCLCPP_WARN(get_logger(), "waiting for parameter `%s` ...", key.c_str());
-      rate.sleep();
-    }
-
-    return {};
-  }
 
   /**
    * \brief Initialize a timer and register it with this class
