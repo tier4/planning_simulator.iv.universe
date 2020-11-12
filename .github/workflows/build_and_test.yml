@@ -23,7 +23,7 @@ jobs:
     - name: Upgrade ros packages
       run: |
         apt update
-        apt upgrade
+        apt upgrade -y
 
     - name: Install missing dependencies
       run: |
