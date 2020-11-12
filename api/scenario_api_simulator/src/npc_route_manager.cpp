@@ -16,9 +16,19 @@
 
 #include <scenario_api_simulator/npc_route_manager.h>
 
-NPCRouteManager::NPCRouteManager() : nh_(""), pnh_("~")
+#include <scenario_api_utils/scenario_api_utils.h>
+#include <npc_simulator/msg/lane_follow_mode.hpp>
+#include <lanelet2_extension/utility/message_conversion.h>
+
+#include <functional>
+
+NPCRouteManager::NPCRouteManager()
+: rclcpp::Node("npcl_route_manager")
 {
-  sub_map_ = pnh_.subscribe("input/vectormap", 1, &NPCRouteManager::callbackMap, this);
+  sub_map_ = this->create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
+    "input/vectormap", 1, std::bind(
+      &NPCRouteManager::callbackMap, this,
+      std::placeholders::_1));
 }
 
 NPCRouteManager::~NPCRouteManager() {}
@@ -26,18 +36,20 @@ NPCRouteManager::~NPCRouteManager() {}
 bool NPCRouteManager::isAPIReady()
 {
   if (lanelet_map_ptr_ == nullptr) {
-    ROS_WARN_DELAYED_THROTTLE(5.0, "lanelet_map is nullptr");
+    RCLCPP_WARN_SKIPFIRST_THROTTLE(
+      get_logger(),
+      *get_clock(), 5000 /* ms */, "lanelet_map is nullptr");
     return false;
   }
   return true;
 }
 
 bool NPCRouteManager::planRoute(
-  const std::string & name, const geometry_msgs::Pose initial_pose,
-  const geometry_msgs::Pose goal_pose, std::vector<int> * const route)
+  const std::string & name, const geometry_msgs::msg::Pose initial_pose,
+  const geometry_msgs::msg::Pose goal_pose, std::vector<int> * const route)
 {
   //create check point list
-  std::vector<geometry_msgs::Pose> checkpoints;
+  std::vector<geometry_msgs::msg::Pose> checkpoints;
   checkpoints.emplace_back(initial_pose);
 
   if (npc_checkpoints_map_.find(name) != npc_checkpoints_map_.end()) {
@@ -73,7 +85,8 @@ bool NPCRouteManager::planRoute(
 }
 
 bool NPCRouteManager::planPathBetweenCheckpoints(
-  const geometry_msgs::Pose & start_checkpoint, const geometry_msgs::Pose & goal_checkpoint,
+  const geometry_msgs::msg::Pose & start_checkpoint,
+  const geometry_msgs::msg::Pose & goal_checkpoint,
   lanelet::ConstLanelets * path_lanelets_ptr)
 {
   lanelet::Lanelet start_lanelet;
@@ -89,7 +102,7 @@ bool NPCRouteManager::planPathBetweenCheckpoints(
   lanelet::Optional<lanelet::routing::Route> optional_route =
     routing_graph_ptr_->getRoute(start_lanelet, goal_lanelet, 0);
   if (!optional_route) {
-    ROS_ERROR_STREAM("Failed to find a proper path");
+    RCLCPP_ERROR_STREAM(get_logger(), "Failed to find a proper path");
     return false;
   }
 
@@ -101,19 +114,19 @@ bool NPCRouteManager::planPathBetweenCheckpoints(
 }
 
 bool NPCRouteManager::setCheckPoint(
-  const std::string & name, const geometry_msgs::Pose checkpoint_pose)
+  const std::string & name, const geometry_msgs::msg::Pose checkpoint_pose)
 {
   if (npc_checkpoints_map_.find(name) != npc_checkpoints_map_.end()) {
     npc_checkpoints_map_[name].emplace_back(checkpoint_pose);
   } else {
-    std::vector<geometry_msgs::Pose> checkpoint_list;
+    std::vector<geometry_msgs::msg::Pose> checkpoint_list;
     checkpoint_list.emplace_back(checkpoint_pose);
     npc_checkpoints_map_[name] = checkpoint_list;
   }
   return true;
 }
 
-bool NPCRouteManager::getNPCGoal(const std::string & name, geometry_msgs::Pose * pose)
+bool NPCRouteManager::getNPCGoal(const std::string & name, geometry_msgs::msg::Pose * pose)
 {
   if (npc_goal_map_.find(name) == npc_goal_map_.end()) {
     return false;
@@ -123,24 +136,24 @@ bool NPCRouteManager::getNPCGoal(const std::string & name, geometry_msgs::Pose *
   return true;
 }
 
-void NPCRouteManager::callbackMap(const autoware_lanelet2_msgs::MapBin & msg)
+void NPCRouteManager::callbackMap(const autoware_lanelet2_msgs::msg::MapBin::ConstSharedPtr msg)
 {
-  ROS_INFO("Start loading lanelet");
+  RCLCPP_INFO(get_logger(), "Start loading lanelet");
   lanelet_map_ptr_ = std::make_shared<lanelet::LaneletMap>();
   lanelet::utils::conversion::fromBinMsg(
-    msg, lanelet_map_ptr_, &traffic_rules_ptr_, &routing_graph_ptr_);
-  ROS_INFO("Map is loaded");
+    *msg, lanelet_map_ptr_, &traffic_rules_ptr_, &routing_graph_ptr_);
+  RCLCPP_INFO(get_logger(), "Map is loaded");
 }
 
 std::unordered_map<std::string, uint8_t> NPCRouteManager::updateNPCLaneFollowState(
-  std::unordered_map<std::string, npc_simulator::Object> npc_infos)
+  std::unordered_map<std::string, npc_simulator::msg::Object> npc_infos)
 {
   std::unordered_map<std::string, uint8_t> lane_follow_states;
 
   for (const auto & npc_info_pair : npc_infos) {
     std::string npc_name = npc_info_pair.first;
     auto npc_info = npc_info_pair.second;
-    geometry_msgs::Pose npc_curr_pose = npc_info.initial_state.pose_covariance.pose;
+    geometry_msgs::msg::Pose npc_curr_pose = npc_info.initial_state.pose_covariance.pose;
 
     if (npc_lane_map_.find(npc_name) == npc_lane_map_.end()) {
       //"name" NPC is not in npc-lane list.
@@ -154,12 +167,12 @@ std::unordered_map<std::string, uint8_t> NPCRouteManager::updateNPCLaneFollowSta
 }
 
 std::unordered_map<std::string, bool> NPCRouteManager::updateNPCStopState(
-  std::unordered_map<std::string, npc_simulator::Object> npc_infos)
+  std::unordered_map<std::string, npc_simulator::msg::Object> npc_infos)
 {
   //check goal
   for (const auto & npc_goal : npc_goal_map_) {
     std::string name = npc_goal.first;
-    geometry_msgs::Pose goal_pose = npc_goal.second;
+    geometry_msgs::msg::Pose goal_pose = npc_goal.second;
 
     if (npc_infos.find(name) == npc_infos.end()) {
       //"name" NPC is not in npc list.
@@ -183,40 +196,43 @@ std::unordered_map<std::string, bool> NPCRouteManager::updateNPCStopState(
 }
 
 uint8_t NPCRouteManager::decideNPCLaneFollowDir(
-  lanelet::ConstLanelets routes, std::string npc_name, geometry_msgs::Pose npc_pose)
+  lanelet::ConstLanelets routes, std::string npc_name, geometry_msgs::msg::Pose npc_pose)
 {
   lanelet::Lanelet closest_lanelet;
   if (!getClosestLaneletWithRoutes(npc_pose, lanelet_map_ptr_, &closest_lanelet, routes)) {
-    return npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT;
+    return npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT;
   }
   int lane_id = closest_lanelet.id();
 
-  for (int i = 0; i < routes.size(); i++) {
+  const std::string left = "left";
+  const std::string right = "right";
+
+  for (size_t i = 0; i < routes.size(); i++) {
     if (routes.at(i).id() != lane_id) {
       continue;
     }
 
     //check current lane tag
-    if (routes.at(i).attributeOr("turn_direction", std::string("else")) == "left") {
-      return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_LEFT);
-    } else if (routes.at(i).attributeOr("turn_direction", std::string("else")) == "right") {
-      return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_RIGHT);
+    if (routes.at(i).attributeOr("turn_direction", std::string("else")) == left) {
+      return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_LEFT);
+    } else if (routes.at(i).attributeOr("turn_direction", std::string("else")) == right) {
+      return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_RIGHT);
     }
 
     //next lane id is null
     if (i == routes.size() - 1) {
-      return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT);
+      return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT);
     }
 
     //check next lane tag
-    if (routes.at(i + 1).attributeOr("turn_direction", std::string("else")) == "left") {
-      return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_LEFT);
-    } else if (routes.at(i + 1).attributeOr("turn_direction", std::string("else")) == "right") {
-      return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_RIGHT);
+    if (routes.at(i + 1).attributeOr("turn_direction", std::string("else")) == left) {
+      return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_LEFT);
+    } else if (routes.at(i + 1).attributeOr("turn_direction", std::string("else")) == right) {
+      return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_RIGHT);
     }
 
     //no tag
-    return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT);
+    return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT);
   }
 
   //no lanelet id to correspond to closest lanelet id
@@ -229,30 +245,31 @@ uint8_t NPCRouteManager::decideNPCLaneFollowDir(
       }
 
       //check current lane tag
-      if (lane.attributeOr("turn_direction", "else") == "left") {
-        return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_LEFT);
-      } else if (lane.attributeOr("turn_direction", "else") == "right") {
-        return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_RIGHT);
+      if (lane.attributeOr("turn_direction", "else") == left) {
+        return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_LEFT);
+      } else if (lane.attributeOr("turn_direction", "else") == right) {
+        return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_RIGHT);
       }
 
       //check next lane tag
-      if (route.attributeOr("turn_direction", "else") == "left") {
-        return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_LEFT);
-      } else if (route.attributeOr("turn_direction", "else") == "right") {
-        return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_RIGHT);
+      if (route.attributeOr("turn_direction", "else") == left) {
+        return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_LEFT);
+      } else if (route.attributeOr("turn_direction", "else") == right) {
+        return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_RIGHT);
       }
       //no tag
-      return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT);
+      return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT);
     }
   }
 
   //out of route. npc stops now.
   npc_stop_state_[npc_name] = true;
-  return static_cast<uint8_t>(npc_simulator::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT);
+  return static_cast<uint8_t>(npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT);
 }
 
 bool NPCRouteManager::isGoal(
-  const geometry_msgs::Pose goal_pose, const geometry_msgs::Pose npc_pose, const double npc_vel,
+  const geometry_msgs::msg::Pose goal_pose, const geometry_msgs::msg::Pose npc_pose,
+  const double npc_vel,
   const double thresh_dist, const double thresh_delta_yaw)
 {
   const double dx = goal_pose.position.x - npc_pose.position.x;
@@ -272,7 +289,8 @@ bool NPCRouteManager::isGoal(
 
   if (
     longitudinal_dist <= stop_dist && lateral_dist <= npc_min_lateral_stop_dist_ &&
-    delta_yaw <= thresh_delta_yaw) {
+    delta_yaw <= thresh_delta_yaw)
+  {
     return true;
   }
 
@@ -280,7 +298,7 @@ bool NPCRouteManager::isGoal(
 }
 
 bool NPCRouteManager::getClosestLanelet(
-  const geometry_msgs::Pose current_pose, const lanelet::LaneletMapPtr & lanelet_map_ptr,
+  const geometry_msgs::msg::Pose current_pose, const lanelet::LaneletMapPtr & lanelet_map_ptr,
   lanelet::Lanelet * closest_lanelet, double max_dist, double max_delta_yaw)
 {
   lanelet::BasicPoint2d search_point(current_pose.position.x, current_pose.position.y);
@@ -309,7 +327,7 @@ bool NPCRouteManager::getClosestLanelet(
 }
 
 bool NPCRouteManager::getClosestLaneletWithRoutes(
-  const geometry_msgs::Pose current_pose, const lanelet::LaneletMapPtr & lanelet_map_ptr,
+  const geometry_msgs::msg::Pose current_pose, const lanelet::LaneletMapPtr & lanelet_map_ptr,
   lanelet::Lanelet * closest_lanelet, lanelet::ConstLanelets routes, double max_dist,
   double max_delta_yaw)
 {
