@@ -51,8 +51,7 @@ private:
   rclcpp::Publisher<dummy_perception_publisher::msg::Object>::SharedPtr
     dummy_perception_object_pub_;
   rclcpp::Publisher<autoware_perception_msgs::msg::DynamicObjectArray>::SharedPtr
-    debug_object_pub_;  // for
-  // visualization
+    debug_object_pub_;  // for visualization
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr engage_sub_;
   rclcpp::Subscription<npc_simulator::msg::Object>::SharedPtr object_sub_;
   rclcpp::Subscription<autoware_lanelet2_msgs::msg::MapBin>::SharedPtr map_sub_;

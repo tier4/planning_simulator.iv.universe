@@ -42,20 +42,10 @@ NPCSimulatorNode::NPCSimulatorNode()
   // get parameter
   engage_state_ = declare_parameter<bool>("initial_engage_state", true);
 
-  // get vehicle parameter
-  double wheel_tread{}, left_overhang{}, right_overhang{};
-  assert(get_parameter("wheel_tread", wheel_tread));
-  assert(get_parameter("left_overhang", left_overhang));
-  assert(get_parameter("right_overhang", right_overhang));
-  vehicle_width_ = wheel_tread + left_overhang + right_overhang;
-
-  double wheel_base{}, front_overhang{}, rear_overhang{};
-  assert(get_parameter("wheel_base", wheel_base));
-  assert(get_parameter("front_overhang", front_overhang));
-  assert(get_parameter("rear_overhang", rear_overhang));
-  vehicle_length_ = wheel_base + front_overhang + rear_overhang;
-
-  vehicle_base2center_ = vehicle_length_ / 2.0 - rear_overhang;
+  // all the parameter reading etc. already done by vehicle_info
+  vehicle_width_ = vehicle_info_.vehicle_width_m_;
+  vehicle_length_ = vehicle_info_.vehicle_length_m_;
+  vehicle_base2center_ = vehicle_length_ / 2.0 - vehicle_info_.rear_overhang_m_;
 
   static constexpr std::size_t single_element_in_queue = 1;
   static constexpr std::size_t small_queue_size = 10;
