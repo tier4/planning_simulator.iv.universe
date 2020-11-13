@@ -45,13 +45,13 @@ namespace lanelet
   }
 }  // namespace lanelet
 
-class NPCRouteManager: public rclcpp::Node
+class NPCRouteManager
 {
 public:
   /**
    * @brief constructor
    */
-  NPCRouteManager();
+  NPCRouteManager(rclcpp::Node::SharedPtr node);
 
   /**
    * @brief destructor
@@ -99,6 +99,8 @@ public:
   bool getNPCGoal(const std::string & name, geometry_msgs::msg::Pose * pose);
 
 private:
+  rclcpp::Logger logger_;
+  rclcpp::Clock::SharedPtr clock_;
   rclcpp::Subscription < autoware_lanelet2_msgs::msg::MapBin > ::SharedPtr sub_map_;  //!< @brief topic subscriber for map
 
   // lanelet
