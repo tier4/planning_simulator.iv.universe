@@ -22,10 +22,11 @@
 
 #include <functional>
 
-NPCRouteManager::NPCRouteManager()
-: rclcpp::Node("npcl_route_manager")
+NPCRouteManager::NPCRouteManager(rclcpp::Node::SharedPtr node)
+: logger_(node->get_logger().get_child("npcl_route_manager")),
+  clock_(node->get_clock())
 {
-  sub_map_ = this->create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
+  sub_map_ = node->create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
     "input/vectormap", 1, std::bind(
       &NPCRouteManager::callbackMap, this,
       std::placeholders::_1));
@@ -37,8 +38,8 @@ bool NPCRouteManager::isAPIReady()
 {
   if (lanelet_map_ptr_ == nullptr) {
     RCLCPP_WARN_SKIPFIRST_THROTTLE(
-      get_logger(),
-      *get_clock(), 5000 /* ms */, "lanelet_map is nullptr");
+      logger_,
+      *clock_, 5000 /* ms */, "lanelet_map is nullptr");
     return false;
   }
   return true;
@@ -102,7 +103,7 @@ bool NPCRouteManager::planPathBetweenCheckpoints(
   lanelet::Optional<lanelet::routing::Route> optional_route =
     routing_graph_ptr_->getRoute(start_lanelet, goal_lanelet, 0);
   if (!optional_route) {
-    RCLCPP_ERROR_STREAM(get_logger(), "Failed to find a proper path");
+    RCLCPP_ERROR_STREAM(logger_, "Failed to find a proper path");
     return false;
   }
 
@@ -138,11 +139,11 @@ bool NPCRouteManager::getNPCGoal(const std::string & name, geometry_msgs::msg::P
 
 void NPCRouteManager::callbackMap(const autoware_lanelet2_msgs::msg::MapBin::ConstSharedPtr msg)
 {
-  RCLCPP_INFO(get_logger(), "Start loading lanelet");
+  RCLCPP_INFO(logger_, "Start loading lanelet");
   lanelet_map_ptr_ = std::make_shared<lanelet::LaneletMap>();
   lanelet::utils::conversion::fromBinMsg(
     *msg, lanelet_map_ptr_, &traffic_rules_ptr_, &routing_graph_ptr_);
-  RCLCPP_INFO(get_logger(), "Map is loaded");
+  RCLCPP_INFO(logger_, "Map is loaded");
 }
 
 std::unordered_map<std::string, uint8_t> NPCRouteManager::updateNPCLaneFollowState(

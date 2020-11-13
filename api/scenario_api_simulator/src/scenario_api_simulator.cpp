@@ -30,7 +30,7 @@ ScenarioAPISimulator::ScenarioAPISimulator(rclcpp::Node::SharedPtr node)
   clock_(node->get_clock())
 {
   /* initializer*/
-  npc_route_manager_ = std::make_shared<NPCRouteManager>();
+  npc_route_manager_ = std::make_shared<NPCRouteManager>(node);
 
   /* register service client*/
   client_ = node->create_client<npc_simulator::srv::GetObject>(
