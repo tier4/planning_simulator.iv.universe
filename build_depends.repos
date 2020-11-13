@@ -3,6 +3,10 @@ repositories:
     type: git
     url: https://github.com/tier4/pilot.auto.git
     version: ros2
+  description/vehicle/lexus_description:
+    type: git
+    url: https://github.com/tier4/lexus_description.iv.universe.git
+    version: ros2
   # dependencies for autoware/pilot.auto
   vendor/grid_map:
     type: git
