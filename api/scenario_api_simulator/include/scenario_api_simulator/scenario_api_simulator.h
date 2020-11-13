@@ -32,13 +32,13 @@
 
 #include <scenario_api_simulator/npc_route_manager.h>
 
-class ScenarioAPISimulator: public rclcpp::Node
+class ScenarioAPISimulator
 {
 public:
   /**
    * @brief constructor
    */
-  ScenarioAPISimulator();
+  ScenarioAPISimulator(rclcpp::Node::SharedPtr node);
 
   /**
    * @brief destructor
@@ -103,6 +103,8 @@ public:
   bool setTrafficLight(int traffic_id, std::string traffic_color);  // future work //TODO
 
 private:
+  rclcpp::Logger logger_;
+  rclcpp::Clock::SharedPtr clock_;
   rclcpp::Client < npc_simulator::srv::GetObject > ::SharedPtr client_;            //!< @brief private ros service client
   rclcpp::Publisher < npc_simulator::msg::Object > ::SharedPtr pub_object_info_;       //!< @brief topic pubscriber for npc
   rclcpp::Publisher < std_msgs::msg::Bool > ::SharedPtr pub_simulator_engage_;  //!< @brief topic pubscriber for vehicle engage
