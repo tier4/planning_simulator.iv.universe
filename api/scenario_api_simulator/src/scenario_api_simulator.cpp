@@ -31,10 +31,7 @@ ScenarioAPISimulator::ScenarioAPISimulator(rclcpp::Node::SharedPtr node)
 {
   /* initializer*/
   npc_route_manager_ = std::make_shared<NPCRouteManager>(node);
-
-  /* register service client*/
-  client_ = node->create_client<npc_simulator::srv::GetObject>(
-    "/simulation/npc_simulator/srv/get_object");
+  npc_simulator_ = std::make_shared<NPCSimulatorNode>(*node);
 
   /* register publisher */
   rclcpp::QoS durable_qos{1};
@@ -548,11 +545,9 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::msg::
   } else {
     auto req = std::make_shared<npc_simulator::srv::GetObject::Request>();
     req->object_id = uuid_map_.at(name);
-
-    auto res_future = client_->async_send_request(req);
-    auto status = res_future.wait_for(std::chrono::microseconds(1000));
-    if (status == std::future_status::ready) {
-      obj = res_future.get()->object;
+    auto res = std::make_shared<npc_simulator::srv::GetObject::Response>();
+    if (npc_simulator_->getObject(req, res)) {
+      obj = res->object;
       return true;
     } else {
       RCLCPP_WARN_STREAM(logger_, "Failed to get NPC");

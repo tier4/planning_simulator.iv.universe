@@ -37,7 +37,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 ament_export_dependencies(rosidl_default_runtime)
 
 ament_auto_add_library(${PROJECT_NAME}_node STATIC src/node.cpp)
-target_include_directories(${PROJECT_NAME}_node PRIVATE "${Boost_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME}_node "${Boost_LIBRARY_DIR}")
 ament_target_dependencies(${PROJECT_NAME}_node Boost)
 

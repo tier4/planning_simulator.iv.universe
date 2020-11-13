@@ -13,7 +13,7 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-add_library(scenario_api_simulator SHARED
+add_library(scenario_api_simulator STATIC
   src/scenario_api_simulator.cpp
   src/npc_route_manager.cpp
 )
@@ -22,7 +22,7 @@ target_include_directories(scenario_api_simulator PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 
-ament_target_dependencies(scenario_api_simulator autoware_perception_msgs dummy_perception_publisher geometry_msgs lanelet2_extension npc_simulator rclcpp scenario_api_utils std_msgs tf2 unique_identifier_msgs)
+ament_target_dependencies(scenario_api_simulator autoware_perception_msgs dummy_perception_publisher geometry_msgs lanelet2_extension npc_simulator rclcpp scenario_api_utils std_msgs tf2 unique_identifier_msgs vehicle_info_util)
 
 ament_export_targets(export_scenario_api_simulator HAS_LIBRARY_TARGET)
 ament_export_dependencies(autoware_perception_msgs geometry_msgs npc_simulator rclcpp std_msgs unique_identifier_msgs)

@@ -23,6 +23,7 @@
 #include <unique_identifier_msgs/msg/uuid.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
+#include <npc_simulator/node.h>
 
 #include <unistd.h>
 
@@ -105,7 +106,7 @@ public:
 private:
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
-  rclcpp::Client < npc_simulator::srv::GetObject > ::SharedPtr client_;            //!< @brief private ros service client
+  std::shared_ptr < NPCSimulatorNode > npc_simulator_;
   rclcpp::Publisher < npc_simulator::msg::Object > ::SharedPtr pub_object_info_;       //!< @brief topic pubscriber for npc
   rclcpp::Publisher < std_msgs::msg::Bool > ::SharedPtr pub_simulator_engage_;  //!< @brief topic pubscriber for vehicle engage
   rclcpp::Publisher < std_msgs::msg::Bool > ::SharedPtr pub_npc_engage_;        //!< @brief topic pubscriber for npc simulator engage

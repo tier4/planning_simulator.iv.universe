@@ -127,9 +127,6 @@ private:
   void inputVelocityZ(
     npc_simulator::msg::Object * obj, const double prev_z_pos, const double delta_time);
 
-  bool getObject(
-    const npc_simulator::srv::GetObject::Request::SharedPtr req,
-    const npc_simulator::srv::GetObject::Response::SharedPtr res);
   void engageCallback(const std_msgs::msg::Bool::ConstSharedPtr engage);
   void objectCallback(const npc_simulator::msg::Object::ConstSharedPtr msg);
   void mapCallback(const autoware_lanelet2_msgs::msg::MapBin::ConstSharedPtr msg);
@@ -190,9 +187,13 @@ private:
 public:
   NPCSimulatorNode(rclcpp::Node& node);
   ~NPCSimulatorNode(){};
+
+  bool getObject(
+    const npc_simulator::srv::GetObject::Request::SharedPtr req,
+    const npc_simulator::srv::GetObject::Response::SharedPtr res);
 };
 
-constexpr double normalizeRadian(
+constexpr double normalizeRadianRenamed(
   const double rad, const double min_rad = -boost::math::constants::pi<double>(),
   const double max_rad = boost::math::constants::pi<double>())
 {

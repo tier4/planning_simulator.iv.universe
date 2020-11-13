@@ -518,7 +518,7 @@ int NPCSimulatorNode::getCurrentLaneletID(
 
     double current_yaw = tf2::getYaw(obj_pose.orientation);
     double lane_yaw = lanelet::utils::getLaneletAngle(lanelet.second, obj_pose.position);
-    double delta_yaw = std::abs(normalizeRadian(current_yaw - lane_yaw));
+    double delta_yaw = std::abs(normalizeRadianRenamed(current_yaw - lane_yaw));
     auto lanetag = lanelet.second.attributeOr("turn_direction", "else");
     double current_dist =
       lanelet.first + addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_);
@@ -567,7 +567,7 @@ double NPCSimulatorNode::getCurrentDiffYaw(
   const geometry_msgs::msg::Pose & pose, const double lane_yaw)
 {
   double current_yaw = tf2::getYaw(pose.orientation);
-  return normalizeRadian(lane_yaw - current_yaw);
+  return normalizeRadianRenamed(lane_yaw - current_yaw);
 }
 
 double NPCSimulatorNode::getFootOfPerpendicularLineLength(
@@ -632,7 +632,7 @@ double NPCSimulatorNode::getCurrentLaneDist(
   double diff_y = nearest_y - pose.position.y;
   double current_yaw = tf2::getYaw(pose.orientation);
   double nearest_yaw = atan2(diff_y, diff_x);
-  double diff_yaw = normalizeRadian(nearest_yaw - current_yaw);
+  double diff_yaw = normalizeRadianRenamed(nearest_yaw - current_yaw);
   if (std::abs(diff_yaw) < 10e-04) return 0.0;
   double base_dist = pl_dist_from_center_line * (diff_yaw / std::abs(diff_yaw));
 
