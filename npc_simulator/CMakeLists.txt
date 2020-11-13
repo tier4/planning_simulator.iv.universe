@@ -15,12 +15,12 @@ ament_auto_find_build_dependencies()
 # message generation
 
 set(msg_files
-  "msg/LaneChangeDir.msg"
-  "msg/LaneFollowMode.msg"
-  "msg/Object.msg"
+  msg/LaneChangeDir.msg
+  msg/LaneFollowMode.msg
+  msg/Object.msg
 )
 set(service_files
-    "srv/GetObject.srv"
+    srv/GetObject.srv
 )
 set(msg_dependencies
   autoware_perception_msgs
@@ -36,9 +36,13 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   )
 ament_export_dependencies(rosidl_default_runtime)
 
-ament_auto_add_executable(${PROJECT_NAME}_node
+ament_auto_add_library(${PROJECT_NAME}_node STATIC src/node.cpp)
+target_include_directories(${PROJECT_NAME}_node PRIVATE "${Boost_INCLUDE_DIR}")
+target_link_libraries(${PROJECT_NAME}_node "${Boost_LIBRARY_DIR}")
+ament_target_dependencies(${PROJECT_NAME}_node Boost)
+
+ament_auto_add_executable(${PROJECT_NAME}_main
   src/main.cpp
-  src/node.cpp
 )
 # to allow using interfaces created in this package
 rosidl_target_interfaces(${PROJECT_NAME}_node

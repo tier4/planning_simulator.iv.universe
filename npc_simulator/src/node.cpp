@@ -20,10 +20,12 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
+#include <boost/algorithm/clamp.hpp>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/linestring.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
+#include <boost/math/special_functions/sign.hpp>
 
 namespace bg = boost::geometry;
 typedef bg::model::d2::point_xy<double> Point;

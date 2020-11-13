@@ -38,9 +38,6 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/bool.hpp>
 
-#include <boost/algorithm/clamp.hpp>
-#include <boost/math/special_functions/sign.hpp>
-
 #include <memory>
 #include <random>
 #include <tuple>
