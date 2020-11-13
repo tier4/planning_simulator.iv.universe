@@ -42,9 +42,12 @@
 #include <random>
 #include <tuple>
 
-class NPCSimulatorNode : public rclcpp::Node
+class NPCSimulatorNode
 {
 private:
+  rclcpp::Logger logger_;
+  rclcpp::Clock::SharedPtr clock_;
+
   rclcpp::Publisher<dummy_perception_publisher::msg::Object>::SharedPtr
     dummy_perception_object_pub_;
   rclcpp::Publisher<autoware_perception_msgs::msg::DynamicObjectArray>::SharedPtr
@@ -182,10 +185,10 @@ private:
    * @return the timer
    */
   rclcpp::TimerBase::SharedPtr initTimer(
-    const rclcpp::Duration & duration, void (NPCSimulatorNode::*ptr_to_member_fn)(void));
+    rclcpp::Node& node, const rclcpp::Duration & duration, void (NPCSimulatorNode::*ptr_to_member_fn)(void));
 
 public:
-  NPCSimulatorNode();
+  NPCSimulatorNode(rclcpp::Node& node);
   ~NPCSimulatorNode(){};
 };
 

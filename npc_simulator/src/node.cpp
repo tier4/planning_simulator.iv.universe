@@ -32,17 +32,18 @@ typedef bg::model::d2::point_xy<double> Point;
 typedef bg::model::linestring<Point> Line;
 typedef bg::model::polygon<Point> Polygon;
 
-NPCSimulatorNode::NPCSimulatorNode()
-: rclcpp::Node("npc_simulator"),
-  tf_buffer_(get_clock()),
+NPCSimulatorNode::NPCSimulatorNode(rclcpp::Node& node)
+: logger_(rclcpp::get_logger("npc_simulator")),
+  clock_(node.get_clock()),
+  tf_buffer_(clock_),
   tf_listener_(tf_buffer_),
-  vehicle_info_(vehicle_info_util::VehicleInfo::create(*this))
+  vehicle_info_(vehicle_info_util::VehicleInfo::create(node))
 {
   using std::placeholders::_1;
   using std::placeholders::_2;
 
   // get parameter
-  engage_state_ = declare_parameter<bool>("initial_engage_state", true);
+  engage_state_ = node.declare_parameter<bool>("initial_engage_state", true);
 
   // all the parameter reading etc. already done by vehicle_info
   vehicle_width_ = vehicle_info_.vehicle_width_m_;
@@ -55,27 +56,27 @@ NPCSimulatorNode::NPCSimulatorNode()
   rclcpp::QoS durable_qos(small_queue_size);
   durable_qos.transient_local();
 
-  dummy_perception_object_pub_ = create_publisher<dummy_perception_publisher::msg::Object>(
+  dummy_perception_object_pub_ = node.create_publisher<dummy_perception_publisher::msg::Object>(
     "output/dynamic_object_info", durable_qos);
-  debug_object_pub_ = create_publisher<autoware_perception_msgs::msg::DynamicObjectArray>(
+  debug_object_pub_ = node.create_publisher<autoware_perception_msgs::msg::DynamicObjectArray>(
     "output/debug_object_info", durable_qos);
 
   // register callback
-  engage_sub_ = create_subscription<std_msgs::msg::Bool>(
+  engage_sub_ = node.create_subscription<std_msgs::msg::Bool>(
     "input/engage", large_queue_size, std::bind(&NPCSimulatorNode::engageCallback, this, _1));
-  object_sub_ = create_subscription<npc_simulator::msg::Object>(
+  object_sub_ = node.create_subscription<npc_simulator::msg::Object>(
     "input/object", large_queue_size, std::bind(&NPCSimulatorNode::objectCallback, this, _1));
-  map_sub_ = create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
+  map_sub_ = node.create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
     "input/vector_map", single_element_in_queue,
     std::bind(&NPCSimulatorNode::mapCallback, this, _1));
-  pose_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
+  pose_sub_ = node.create_subscription<geometry_msgs::msg::PoseStamped>(
     "input/ego_vehicle_pose", single_element_in_queue,
     std::bind(&NPCSimulatorNode::poseCallback, this, _1));
-  getobject_srv_ = create_service<npc_simulator::srv::GetObject>(
+  getobject_srv_ = node.create_service<npc_simulator::srv::GetObject>(
     "get_object", std::bind(&NPCSimulatorNode::getObject, this, _1, _2));
 
-  timer_main_ = initTimer(rclcpp::Duration(0.1), &NPCSimulatorNode::mainTimerCallback);
-  timer_pub_info_ = initTimer(rclcpp::Duration(0.02), &NPCSimulatorNode::pubInfoTimerCallback);
+  timer_main_ = initTimer(node, rclcpp::Duration(0.1), &NPCSimulatorNode::mainTimerCallback);
+  timer_pub_info_ = initTimer(node, rclcpp::Duration(0.02), &NPCSimulatorNode::pubInfoTimerCallback);
 }
 
 bool NPCSimulatorNode::getObject(
@@ -97,7 +98,7 @@ bool NPCSimulatorNode::getObject(
 
 void NPCSimulatorNode::mainTimerCallback()
 {
-  rclcpp::Time current_time = this->now();
+  rclcpp::Time current_time = clock_->now();
 
   // get transform
   tf2::Transform tf_base_link2map;
@@ -107,7 +108,7 @@ void NPCSimulatorNode::mainTimerCallback()
       /*target*/ "base_link", /*src*/ "map", current_time, rclcpp::Duration(0.5));
     tf2::fromMsg(ros_base_link2map.transform, tf_base_link2map);
   } catch (tf2::TransformException & ex) {
-    RCLCPP_WARN(get_logger(), "%s", ex.what());
+    RCLCPP_WARN(logger_, "%s", ex.what());
     return;
   }
 
@@ -249,19 +250,19 @@ bool NPCSimulatorNode::checkValidLaneChange(
   } else if (lane_change_dir == std::string("left")) {
     change_lane = routing_graph_ptr_->left(current_lane);
   } else {
-    RCLCPP_WARN_STREAM(get_logger(), "lane change direction is only left or right");
+    RCLCPP_WARN_STREAM(logger_, "lane change direction is only left or right");
     return false;
   }
 
   if (!change_lane) {
     RCLCPP_WARN_STREAM(
-      get_logger(), "no right lane, current lane id=" << current_lane_id
+      logger_, "no right lane, current lane id=" << current_lane_id
                                                       << ",lane change num= " << lane_change_dir);
     return false;
   }
 
   RCLCPP_INFO_STREAM(
-    get_logger(), "start lane change , current_lane_id =" << current_lane_id << ", target lane_id="
+    logger_, "start lane change , current_lane_id =" << current_lane_id << ", target lane_id="
                                                           << change_lane->id());
   result_lane_id = change_lane->id();
   return true;
@@ -287,12 +288,12 @@ bool NPCSimulatorNode::checkValidUTurn(
 
   if (ops_lane_id < 0) {
     RCLCPP_WARN_STREAM(
-      get_logger(), "no opposite lane for u-turn, current lane id=" << current_lane_id);
+      logger_, "no opposite lane for u-turn, current lane id=" << current_lane_id);
     return false;
   }
 
   RCLCPP_INFO_STREAM(
-    get_logger(),
+    logger_,
     "start u-turn, current_lane_id =" << current_lane_id << ", lane_id=" << ops_lane_id);
   result_lane_id = ops_lane_id;
   return true;
@@ -354,7 +355,7 @@ int NPCSimulatorNode::DecideLaneIdWithLaneChangeMode(
 
   // check existance of lane with target id
   if (!lanelet_map_ptr_->laneletLayer.exists(lane_id)) {
-    RCLCPP_WARN_STREAM(get_logger(), "target lane:" << current_lane_id << "does not exist.");
+    RCLCPP_WARN_STREAM(logger_, "target lane:" << current_lane_id << "does not exist.");
     //return nearest lane
     return getCurrentLaneletID(*obj);
   }
@@ -362,7 +363,7 @@ int NPCSimulatorNode::DecideLaneIdWithLaneChangeMode(
   // check to finish lane-change
   if (checkToFinishLaneChange(*obj, lane_id)) {
     //end lane change
-    RCLCPP_INFO_STREAM(get_logger(), "lane change/u-turn end, lane id=" << lane_id);
+    RCLCPP_INFO_STREAM(logger_, "lane change/u-turn end, lane id=" << lane_id);
     obj->lane_change_id = 0;
     obj->lane_change_dir.dir = npc_simulator::msg::LaneChangeDir::NO_LANE_CHANGE;
   } else {
@@ -594,7 +595,7 @@ double NPCSimulatorNode::getCurrentLaneDist(
   const auto centerline = current_lanelet.centerline2d();
   if (centerline.empty()) {
     RCLCPP_WARN_SKIPFIRST_THROTTLE(
-      get_logger(), *this->get_clock(), 5.0,
+      logger_, *clock_, 5000 /* ms */,
       "cannot get distance from centerline (invalid centerline)");
     return 0.0;
   }
@@ -619,7 +620,7 @@ double NPCSimulatorNode::getCurrentLaneDist(
 
   if (!exist_nearest) {
     RCLCPP_WARN_SKIPFIRST_THROTTLE(
-      get_logger(), *this->get_clock(), 5.0,
+      logger_, *clock_, 5000 /* ms */,
       "cannot get distance from centerline (no nearest line)");
     return 0.0;
   }
@@ -850,7 +851,7 @@ double NPCSimulatorNode::getNearestZPos(const geometry_msgs::msg::Pose & pose)
   const auto centerline = current_lanelet.centerline3d();
   if (centerline.empty()) {
     RCLCPP_WARN_SKIPFIRST_THROTTLE(
-      get_logger(), *this->get_clock(), 5.0,
+      logger_, *clock_, 5000 /* ms */,
       "cannot get distance from centerline (invalid centerline)");
     return 0.0;
   }
@@ -935,7 +936,7 @@ void NPCSimulatorNode::objectCallback(const npc_simulator::msg::Object::ConstSha
           msg->header.frame_id, "map", msg->header.stamp, rclcpp::Duration(0.5));
         tf2::fromMsg(ros_input2map.transform, tf_input2map);
       } catch (tf2::TransformException & ex) {
-        RCLCPP_WARN(get_logger(), "%s", ex.what());
+        RCLCPP_WARN(logger_, "%s", ex.what());
         return;
       }
 
@@ -978,7 +979,7 @@ void NPCSimulatorNode::objectCallback(const npc_simulator::msg::Object::ConstSha
               rclcpp::Duration(0.5));
             tf2::fromMsg(ros_input2map.transform, tf_input2map);
           } catch (tf2::TransformException & ex) {
-            RCLCPP_WARN(get_logger(), "%s", ex.what());
+            RCLCPP_WARN(logger_, "%s", ex.what());
             return;
           }
           tf2::fromMsg(msg->initial_state.pose_covariance.pose, tf_input2object_origin);
@@ -1077,11 +1078,11 @@ void NPCSimulatorNode::objectCallback(const npc_simulator::msg::Object::ConstSha
 
 void NPCSimulatorNode::mapCallback(const autoware_lanelet2_msgs::msg::MapBin::ConstSharedPtr msg)
 {
-  RCLCPP_INFO(get_logger(), "Start loading lanelet");
+  RCLCPP_INFO(logger_, "Start loading lanelet");
   lanelet_map_ptr_ = std::make_shared<lanelet::LaneletMap>();
   lanelet::utils::conversion::fromBinMsg(
     *msg, lanelet_map_ptr_, &traffic_rules_ptr_, &routing_graph_ptr_);
-  RCLCPP_INFO(get_logger(), "Map is loaded");
+  RCLCPP_INFO(logger_, "Map is loaded");
 }
 
 void NPCSimulatorNode::poseCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
@@ -1129,7 +1130,7 @@ NPCSimulatorNode::convertObjectMsgToAutowarePerception(
 {
   autoware_perception_msgs::msg::DynamicObjectArray output_msg;
   output_msg.header.frame_id = "map";
-  output_msg.header.stamp = this->now();
+  output_msg.header.stamp = clock_->now();
 
   for (const auto obj : obj_vec) {
     autoware_perception_msgs::msg::DynamicObject autoware_obj;
@@ -1160,14 +1161,14 @@ NPCSimulatorNode::convertObjectMsgToAutowarePerception(
   return output_msg;
 }
 
-rclcpp::TimerBase::SharedPtr NPCSimulatorNode::initTimer(
+rclcpp::TimerBase::SharedPtr NPCSimulatorNode::initTimer(rclcpp::Node& node,
   const rclcpp::Duration & duration, void (NPCSimulatorNode::*ptr_to_member_fn)(void))
 {
   auto timer_callback = std::bind(ptr_to_member_fn, this);
   rclcpp::TimerBase::SharedPtr timer =
     std::make_shared<rclcpp::GenericTimer<decltype(timer_callback)>>(
-      this->get_clock(), std::chrono::nanoseconds{duration.nanoseconds()},
-      std::move(timer_callback), this->get_node_base_interface()->get_context());
-  this->get_node_timers_interface()->add_timer(timer, nullptr);
+      clock_, std::chrono::nanoseconds{duration.nanoseconds()},
+      std::move(timer_callback), node.get_node_base_interface()->get_context());
+  node.get_node_timers_interface()->add_timer(timer, nullptr);
   return timer;
 }
