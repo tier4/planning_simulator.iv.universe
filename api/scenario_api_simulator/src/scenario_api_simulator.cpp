@@ -25,26 +25,27 @@
 #include <functional>
 #include <random>
 
-ScenarioAPISimulator::ScenarioAPISimulator()
-: rclcpp::Node("scenario_api_simulator")
+ScenarioAPISimulator::ScenarioAPISimulator(rclcpp::Node::SharedPtr node)
+: logger_(node->get_logger().get_child("scenario_api_simulator")),
+  clock_(node->get_clock())
 {
   /* initializer*/
   npc_route_manager_ = std::make_shared<NPCRouteManager>();
 
   /* register service client*/
-  client_ = this->create_client<npc_simulator::srv::GetObject>(
+  client_ = node->create_client<npc_simulator::srv::GetObject>(
     "/simulation/npc_simulator/srv/get_object");
 
   /* register publisher */
   rclcpp::QoS durable_qos{1};
   durable_qos.transient_local();
-  pub_object_info_ = this->create_publisher<npc_simulator::msg::Object>(
+  pub_object_info_ = node->create_publisher<npc_simulator::msg::Object>(
     "output/object_info",
     durable_qos);
-  pub_simulator_engage_ = this->create_publisher<std_msgs::msg::Bool>(
+  pub_simulator_engage_ = node->create_publisher<std_msgs::msg::Bool>(
     "output/simulator_engage",
     durable_qos);
-  pub_npc_engage_ = this->create_publisher<std_msgs::msg::Bool>(
+  pub_npc_engage_ = node->create_publisher<std_msgs::msg::Bool>(
     "output/npc_simulator_engage",
     durable_qos);
 
@@ -52,9 +53,9 @@ ScenarioAPISimulator::ScenarioAPISimulator()
   auto period = std::chrono::duration_cast<std::chrono::nanoseconds>(
     std::chrono::duration<double>(0.02));
   timer_control_ = std::make_shared<rclcpp::GenericTimer<decltype(timer_callback)>>(
-    this->get_clock(), period, std::move(timer_callback),
-    this->get_node_base_interface()->get_context());
-  this->get_node_timers_interface()->add_timer(timer_control_, nullptr);
+    node->get_clock(), period, std::move(timer_callback),
+    node->get_node_base_interface()->get_context());
+  node->get_node_timers_interface()->add_timer(timer_control_, nullptr);
 }
 
 ScenarioAPISimulator::~ScenarioAPISimulator() {}
@@ -112,7 +113,7 @@ bool ScenarioAPISimulator::addNPC(
 {
   // uuid map check
   if (uuid_map_.find(name) != uuid_map_.end()) {
-    RCLCPP_WARN_STREAM(get_logger(), "NPC name :" << name << " already exsists");
+    RCLCPP_WARN_STREAM(logger_, "NPC name :" << name << " already exsists");
     return true;
   } else {
     // generate random UUID
@@ -147,7 +148,7 @@ bool ScenarioAPISimulator::addNPC(
     object = objects.at(npc_type);
     object.offset_rate_from_center = (npc_type == "bicycle" ? 0.95 : 0); // Bicycle runs on left edge of lane
   } catch (std::out_of_range &) {
-    RCLCPP_WARN(get_logger(), "NPC type is invalid. Publish NPC object as unknown type");
+    RCLCPP_WARN(logger_, "NPC type is invalid. Publish NPC object as unknown type");
     object = objects.at("unknown");
   }
 
@@ -161,7 +162,7 @@ bool ScenarioAPISimulator::addNPC(
     return false;
   }
 
-  object.header.stamp = this->now();
+  object.header.stamp = clock_->now();
   object.header.frame_id = "map";
   object.initial_state = init_state;
   object.initial_state.twist_covariance.twist.linear.x = velocity;
@@ -181,7 +182,7 @@ bool ScenarioAPISimulator::addNPC(
 bool ScenarioAPISimulator::checkValidNPC(const std::string & name)
 {
   if (uuid_map_.find(name) == uuid_map_.end()) {
-    RCLCPP_WARN_STREAM(get_logger(), "NPC name :" << name << " does not exist");
+    RCLCPP_WARN_STREAM(logger_, "NPC name :" << name << " does not exist");
     return false;
   } else {
     return true;
@@ -542,7 +543,7 @@ void ScenarioAPISimulator::updateNPC()
 bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::msg::Object & obj)
 {
   if (!checkValidNPC(name)) {
-    RCLCPP_WARN_STREAM(get_logger(), "Invalid NPC name '" << name << "' requested.");
+    RCLCPP_WARN_STREAM(logger_, "Invalid NPC name '" << name << "' requested.");
     return false;
   } else {
     auto req = std::make_shared<npc_simulator::srv::GetObject::Request>();
@@ -554,7 +555,7 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::msg::
       obj = res_future.get()->object;
       return true;
     } else {
-      RCLCPP_WARN_STREAM(get_logger(), "Failed to get NPC");
+      RCLCPP_WARN_STREAM(logger_, "Failed to get NPC");
       return false;
     }
   }
@@ -651,7 +652,7 @@ bool ScenarioAPISimulator::shiftNPCPose(
   // shift pose from farame_type to "Center"
 
   if (obj.shape.type == autoware_perception_msgs::msg::Shape::POLYGON) {
-    RCLCPP_ERROR_STREAM(get_logger(), "Now, npc with polygon type is not supported");
+    RCLCPP_ERROR_STREAM(logger_, "Now, npc with polygon type is not supported");
     return false;
   }
 
@@ -676,7 +677,7 @@ bool ScenarioAPISimulator::shiftNPCPose(
   }
 
   RCLCPP_ERROR_STREAM(
-    get_logger(),
+    logger_,
     "shiftEGoPose supports only Center, Front, and Rear as frame_type. " <<
       "Now, frame_type is " << frame_type << ".");
   return false;
@@ -701,7 +702,7 @@ npc_simulator::msg::Object ScenarioAPISimulator::getObjectMsg(
   std::string frame_id)
 {
   std_msgs::msg::Header header;
-  header.stamp = this->now();
+  header.stamp = clock_->now();
   header.frame_id = frame_id;
 
   npc_simulator::msg::Object object;
@@ -737,7 +738,7 @@ bool ScenarioAPISimulator::inputNPCStopState(std::unordered_map<std::string, boo
 // traffic light API
 bool ScenarioAPISimulator::setTrafficLight(int traffic_id, std::string traffic_color)
 {
-  RCLCPP_WARN(get_logger(), "setTrafficLight is not implemented yet.");
+  RCLCPP_WARN(logger_, "setTrafficLight is not implemented yet.");
   // TODO
   return false;
 }
