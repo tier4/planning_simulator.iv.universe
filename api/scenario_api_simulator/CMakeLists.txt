@@ -10,17 +10,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
-find_package(autoware_lanelet2_msgs REQUIRED)
-find_package(autoware_perception_msgs REQUIRED)
-find_package(dummy_perception_publisher REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(lanelet2_extension REQUIRED)
-find_package(npc_simulator REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(scenario_api_utils REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(tf2 REQUIRED)
-find_package(unique_identifier_msgs REQUIRED)
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 
 add_library(scenario_api_simulator SHARED
   src/scenario_api_simulator.cpp
