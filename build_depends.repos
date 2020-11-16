@@ -11,6 +11,14 @@ repositories:
     type: git
     url: https://github.com/tier4/lexus_description.iv.universe.git
     version: ros2
+  vendor/rclcpp_generic:
+    type: git
+    url: https://github.com/ApexAI/rclcpp_generic.git
+    version: autoware
+  vendor/topic_tools:
+    type: git
+    url: https://github.com/ApexAI/topic_tools.git
+    version: autoware
   # dependencies for autoware/pilot.auto
   vendor/grid_map:
     type: git
