@@ -10,17 +10,17 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <build_depend>dummy_perception_publisher</build_depend>
-  <build_depend>lanelet2_extension</build_depend>
-  <build_depend>scenario_api_utils</build_depend>
-  <build_depend>tf2</build_depend>
   <depend>autoware_lanelet2_msgs</depend>
   <depend>autoware_perception_msgs</depend>
+  <build_depend>dummy_perception_publisher</build_depend>
   <depend>geometry_msgs</depend>
+  <build_depend>lanelet2_extension</build_depend>
   <depend>npc_simulator</depend>
   <depend>rclcpp</depend>
+  <build_depend>scenario_api_utils</build_depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
+  <build_depend>tf2</build_depend>
   <depend>unique_identifier_msgs</depend>
 
   <export>
