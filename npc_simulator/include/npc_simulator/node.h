@@ -15,14 +15,17 @@
  */
 
 #pragma once
-#include <autoware_lanelet2_msgs/MapBin.h>
-#include <autoware_perception_msgs/DynamicObjectArray.h>
-#include <dummy_perception_publisher/Object.h>
-#include <npc_simulator/GetObject.h>
-#include <npc_simulator/Object.h>
-#include <ros/ros.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <std_msgs/Bool.h>
+
+#include <npc_simulator/msg/object.hpp>
+#include <npc_simulator/srv/get_object.hpp>
+
+#include <lanelet2_core/geometry/Lanelet.h>
+#include <lanelet2_extension/utility/utilities.h>
+#include <autoware_lanelet2_msgs/msg/map_bin.hpp>
+#include <autoware_perception_msgs/msg/dynamic_object_array.hpp>
+#include <dummy_perception_publisher/msg/object.hpp>
+#include <vehicle_info_util/vehicle_info.hpp>
+
 #include <tf2/LinearMath/Transform.h>
 #include <tf2/convert.h>
 #include <tf2/transform_datatypes.h>
@@ -30,61 +33,41 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
-#include <boost/algorithm/clamp.hpp>
-#include <boost/math/special_functions/sign.hpp>
+
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/bool.hpp>
+
 #include <memory>
 #include <random>
 #include <tuple>
 
-// lanelet
-#include <lanelet2_core/geometry/Lanelet.h>
-#include <lanelet2_extension/utility/message_conversion.h>
-#include <lanelet2_extension/utility/utilities.h>
-
-template <class T>
-T waitForParam(const ros::NodeHandle & nh, const std::string & key)
-{
-  T value;
-  ros::Rate rate(1.0);
-
-  while (ros::ok()) {
-    const auto result = nh.getParam(key, value);
-    if (result) {
-      return value;
-    }
-
-    ROS_WARN("waiting for parameter `%s` ...", key.c_str());
-    rate.sleep();
-  }
-
-  return {};
-}
-
-class NPCSimulatorNode
+class NPCSimulatorNode : public rclcpp::Node
 {
 private:
-  ros::NodeHandle nh_, pnh_;
-  ros::Publisher dummy_perception_object_pub_;
-  ros::Publisher debug_object_pub_;  // for visulatization
-  ros::Subscriber engage_sub_;
-  ros::Subscriber object_sub_;
-  ros::Subscriber map_sub_;
-  ros::Subscriber pose_sub_;
-  ros::ServiceServer getobject_srv_;
-  ros::Timer timer_main_;
-  ros::Timer timer_pub_info_;
+  rclcpp::Publisher<dummy_perception_publisher::msg::Object>::SharedPtr
+    dummy_perception_object_pub_;
+  rclcpp::Publisher<autoware_perception_msgs::msg::DynamicObjectArray>::SharedPtr
+    debug_object_pub_;  // for visualization
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr engage_sub_;
+  rclcpp::Subscription<npc_simulator::msg::Object>::SharedPtr object_sub_;
+  rclcpp::Subscription<autoware_lanelet2_msgs::msg::MapBin>::SharedPtr map_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr pose_sub_;
+  rclcpp::Service<npc_simulator::srv::GetObject>::SharedPtr getobject_srv_;
+  rclcpp::TimerBase::SharedPtr timer_main_;
+  rclcpp::TimerBase::SharedPtr timer_pub_info_;
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
-  std::vector<npc_simulator::Object> objects_;
+  std::vector<npc_simulator::msg::Object> objects_;
+  vehicle_info_util::VehicleInfo vehicle_info_;
 
   //simulation state
   bool engage_state_;
 
   //vehicle info
-  geometry_msgs::PoseStamped ego_pose_;
+  geometry_msgs::msg::PoseStamped ego_pose_;
   double vehicle_width_;
   double vehicle_length_;
-  double vehicle_rear_overhang_;
   double vehicle_base2center_;
 
   // lanelet
@@ -92,16 +75,16 @@ private:
   std::shared_ptr<lanelet::routing::RoutingGraph> routing_graph_ptr_;
   std::shared_ptr<lanelet::traffic_rules::TrafficRules> traffic_rules_ptr_;
 
-  void mainTimerCallback(const ros::TimerEvent &);
-  void pubInfoTimerCallback(const ros::TimerEvent &);
-  void updateVelocity(npc_simulator::Object * obj, double dt);
+  void mainTimerCallback();
+  void pubInfoTimerCallback();
+  void updateVelocity(npc_simulator::msg::Object * obj, double dt);
   void updateObjectPosition(
-    npc_simulator::Object * obj, const double move_distance,
-    const geometry_msgs::Quaternion diff_quat);
+    npc_simulator::msg::Object * obj, const double move_distance,
+    const geometry_msgs::msg::Quaternion diff_quat);
   double addCostByLaneTag(
     const int lane_follow_dir, const std::string lanetag, const double base_cost = 0.2);
   int getCurrentLaneletID(
-    const npc_simulator::Object & obj, const bool with_target_lane = true,
+    const npc_simulator::msg::Object & obj, const bool with_target_lane = true,
     const double max_dist = 20.0,
     const double max_delta_yaw = boost::math::constants::pi<double>() * 3.0 / 4.0);
   bool checkValidLaneChange(
@@ -109,45 +92,49 @@ private:
   bool checkValidLaneChange(
     const int current_lane_id, const std::string & lane_change_dir, int & result_lane_id);
   bool checkValidUTurn(
-    const geometry_msgs::Pose & obj_pose, const int current_lane_id, int & result_lane_id);
-  bool checkToFinishLaneChange(const npc_simulator::Object & obj, const int lane_id);
-  int DecideLaneIdWithLaneChangeMode(npc_simulator::Object * obj, const int current_lane_id);
-  geometry_msgs::Quaternion calcQuatForMove(
-    npc_simulator::Object & obj, const int current_lane_id, const double dt);
-  double getRemainingLaneDistance(const geometry_msgs::Pose pose, const int lane_id);
-  double getCurrentLaneYaw(const geometry_msgs::Pose & pose, const int lane_id);
-  double getCurrentDiffYaw(const geometry_msgs::Pose & pose, const double lane_yaw);
+    const geometry_msgs::msg::Pose & obj_pose, const int current_lane_id, int & result_lane_id);
+  bool checkToFinishLaneChange(const npc_simulator::msg::Object & obj, const int lane_id);
+  int DecideLaneIdWithLaneChangeMode(npc_simulator::msg::Object * obj, const int current_lane_id);
+  geometry_msgs::msg::Quaternion calcQuatForMove(
+    npc_simulator::msg::Object & obj, const int current_lane_id, const double dt);
+  double getRemainingLaneDistance(const geometry_msgs::msg::Pose pose, const int lane_id);
+  double getCurrentLaneYaw(const geometry_msgs::msg::Pose & pose, const int lane_id);
+  double getCurrentDiffYaw(const geometry_msgs::msg::Pose & pose, const double lane_yaw);
   double getFootOfPerpendicularLineLength(
     const double lx1, const double ly1, const double lx2, const double ly2,
-    const geometry_msgs::Pose & pose);
+    const geometry_msgs::msg::Pose & pose);
   double getCurrentLaneDist(
-    const geometry_msgs::Pose & pose, const double offset_rate_from_center, const int lane_id);
-  double calcMaxYawRate(const npc_simulator::Object & obj);
-  double calcMaxSpeed(const npc_simulator::Object & obj, int obj_lane_id);
+    const geometry_msgs::msg::Pose & pose, const double offset_rate_from_center, const int lane_id);
+  double calcMaxYawRate(const npc_simulator::msg::Object & obj);
+  double calcMaxSpeed(const npc_simulator::msg::Object & obj, int obj_lane_id);
   double getFollowLaneDiffYaw(
     const double diff_yaw, const double signed_lane_dist, const double current_vel, const double dt,
     const double max_yaw_rate = boost::math::constants::pi<double>() * 1.0);
-  double getNearestZPos(const geometry_msgs::Pose & pose);
+  double getNearestZPos(const geometry_msgs::msg::Pose & pose);
   double calcSmoothZPos(
-    geometry_msgs::Point current_point, geometry_msgs::Point p1, geometry_msgs::Point p2);
-  bool calcCollisionDistance(const npc_simulator::Object & obj, double * col_dist);
-  geometry_msgs::Pose getRelativePose(
-    const geometry_msgs::Pose & source, const geometry_msgs::Pose & target);
+    geometry_msgs::msg::Point current_point, geometry_msgs::msg::Point p1,
+    geometry_msgs::msg::Point p2);
+  bool calcCollisionDistance(const npc_simulator::msg::Object & obj, double * col_dist);
+  geometry_msgs::msg::Pose getRelativePose(
+    const geometry_msgs::msg::Pose & source, const geometry_msgs::msg::Pose & target);
   double calcSpeedToAvoidCollision(const double col_dist);
   void inputImuInfo(
-    npc_simulator::Object * obj, const double prev_vel, const double prev_yaw,
+    npc_simulator::msg::Object * obj, const double prev_vel, const double prev_yaw,
     const double delta_time);
   void inputVelocityZ(
-    npc_simulator::Object * obj, const double prev_z_pos, const double delta_time);
+    npc_simulator::msg::Object * obj, const double prev_z_pos, const double delta_time);
 
-  bool getObject(npc_simulator::GetObject::Request & req, npc_simulator::GetObject::Response & res);
-  void engageCallback(const std_msgs::Bool::ConstPtr & engage);
-  void objectCallback(const npc_simulator::Object::ConstPtr & msg);
-  void mapCallback(const autoware_lanelet2_msgs::MapBin & msg);
-  void poseCallback(const geometry_msgs::PoseStamped::ConstPtr & msg);
-  dummy_perception_publisher::Object convertObjectMsgToDummyPerception(npc_simulator::Object * obj);
-  autoware_perception_msgs::DynamicObjectArray convertObjectMsgToAutowarePerception(
-    const std::vector<npc_simulator::Object> & obj_vec, const bool prediction);
+  bool getObject(
+    const npc_simulator::srv::GetObject::Request::SharedPtr req,
+    const npc_simulator::srv::GetObject::Response::SharedPtr res);
+  void engageCallback(const std_msgs::msg::Bool::ConstSharedPtr engage);
+  void objectCallback(const npc_simulator::msg::Object::ConstSharedPtr msg);
+  void mapCallback(const autoware_lanelet2_msgs::msg::MapBin::ConstSharedPtr msg);
+  void poseCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
+  dummy_perception_publisher::msg::Object convertObjectMsgToDummyPerception(
+    npc_simulator::msg::Object * obj);
+  autoware_perception_msgs::msg::DynamicObjectArray convertObjectMsgToAutowarePerception(
+    const std::vector<npc_simulator::msg::Object> & obj_vec, const bool prediction);
 
   // paramerter
   const double p_coef_diff_dist_ = 0.1;
@@ -185,6 +172,18 @@ private:
   const double max_dist_uturn_ = 10.0;
   const double max_delta_yaw_uturn_ = boost::math::constants::pi<double>() / 3.0;
 
+  /**
+   * \brief Initialize a timer and register it with this class
+   *
+   * @param duration Time to wait before timer is triggered
+   * @param ptr_to_member_fn The timer callback, required to be a pointer to a member function
+   * of NPCSimulatorNode
+   *
+   * @return the timer
+   */
+  rclcpp::TimerBase::SharedPtr initTimer(
+    const rclcpp::Duration & duration, void (NPCSimulatorNode::*ptr_to_member_fn)(void));
+
 public:
   NPCSimulatorNode();
   ~NPCSimulatorNode(){};
@@ -201,23 +200,23 @@ constexpr double normalizeRadian(
     return value - std::copysign(2 * boost::math::constants::pi<double>(), value);
 }
 
-inline geometry_msgs::Quaternion getQuatFromYaw(const double yaw)
+inline geometry_msgs::msg::Quaternion getQuatFromYaw(const double yaw)
 {
   tf2::Quaternion quat;
   quat.setRPY(0.0, 0.0, yaw);
   return tf2::toMsg(quat);
 }
 
-inline geometry_msgs::Point toMsg(const lanelet::ConstPoint3d & ll_point)
+inline geometry_msgs::msg::Point toMsg(const lanelet::ConstPoint3d & ll_point)
 {
-  geometry_msgs::Point point;
+  geometry_msgs::msg::Point point;
   point.x = ll_point.x();
   point.y = ll_point.y();
   point.z = ll_point.z();
   return point;
 }
 
-inline double calcDist2D(const geometry_msgs::Point & p1, const geometry_msgs::Point & p2)
+inline double calcDist2D(const geometry_msgs::msg::Point & p1, const geometry_msgs::msg::Point & p2)
 {
   const double dx = p1.x - p2.x;
   const double dy = p1.y - p2.y;
