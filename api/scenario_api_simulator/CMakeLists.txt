@@ -4,14 +4,12 @@ project(scenario_api_simulator)
 ### Compile options
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wno-unused-parameter -Wall -Wextra -Wpedantic)
 endif()
-
-find_package(ament_cmake REQUIRED)
-find_package(ament_cmake_auto REQUIRED)
-ament_auto_find_build_dependencies()
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
@@ -20,43 +18,5 @@ ament_auto_add_library(${PROJECT_NAME} STATIC
   src/scenario_api_simulator.cpp
   src/npc_route_manager.cpp
   )
-# add_library(scenario_api_simulator SHARED
-#   src/scenario_api_simulator.cpp
-#   src/npc_route_manager.cpp
-# )
-# target_include_directories(scenario_api_simulator PUBLIC
-#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#   $<INSTALL_INTERFACE:include>
-# )
 
-# ament_target_dependencies(scenario_api_simulator autoware_perception_msgs dummy_perception_publisher geometry_msgs lanelet2_extension npc_simulator rclcpp scenario_api_utils std_msgs tf2 unique_identifier_msgs)
-
-# ament_export_targets(export_scenario_api_simulator HAS_LIBRARY_TARGET)
-# ament_export_dependencies(autoware_perception_msgs geometry_msgs npc_simulator rclcpp std_msgs unique_identifier_msgs)
-
-# install(TARGETS scenario_api_simulator
-#   EXPORT export_scenario_api_simulator
-#   ARCHIVE DESTINATION lib
-#   LIBRARY DESTINATION lib
-#   RUNTIME DESTINATION bin
-#   INCLUDES DESTINATION include
-# )
-
-# install(DIRECTORY include/
-#   DESTINATION include
-# )
-
-ament_package()
-
-message("${${PROJECT_NAME}_FOUND_BUILD_DEPENDS}")
-set(PROJECT_TO_INSPECT npc_simulator)
-message("${PROJECT_TO_INSPECT} variables")
-# message("${${PROJECT_TO_INSPECT}_DEFINITIONS}")
-message("${${PROJECT_TO_INSPECT}_INCLUDE_DIRS}")
-# message("${${PROJECT_TO_INSPECT}_LIBRARIES}")
-# message("${${PROJECT_TO_INSPECT}_LINK_FLAGS}")
-# message("${${PROJECT_TO_INSPECT}_RECURSIVE_DEPENDENCIES}")
-message("targets: ${${PROJECT_TO_INSPECT}_TARGETS}")
-
-get_target_property(_include_dirs ${PROJECT_NAME} INTERFACE_INCLUDE_DIRECTORIES)
-message("${_include_dirs}")
+ament_auto_package()
