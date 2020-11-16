@@ -89,11 +89,8 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-# install(
-#   DIRECTORY include/
-#   DESTINATION include
-# )
-
+# ament_auto_package() installs headers, libraries, and executables but not the export target so it needs to be done
+# manually
 install(
   TARGETS ${PROJECT_NAME}_node
   EXPORT export_${PROJECT_NAME}_node
