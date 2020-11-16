@@ -192,37 +192,3 @@ public:
     const npc_simulator::srv::GetObject::Request::SharedPtr req,
     const npc_simulator::srv::GetObject::Response::SharedPtr res);
 };
-
-constexpr double normalizeRadianRenamed(
-  const double rad, const double min_rad = -boost::math::constants::pi<double>(),
-  const double max_rad = boost::math::constants::pi<double>())
-{
-  const auto value = std::fmod(rad, 2 * boost::math::constants::pi<double>());
-  if (min_rad < value && value <= max_rad)
-    return value;
-  else
-    return value - std::copysign(2 * boost::math::constants::pi<double>(), value);
-}
-
-inline geometry_msgs::msg::Quaternion getQuatFromYaw(const double yaw)
-{
-  tf2::Quaternion quat;
-  quat.setRPY(0.0, 0.0, yaw);
-  return tf2::toMsg(quat);
-}
-
-inline geometry_msgs::msg::Point toMsg(const lanelet::ConstPoint3d & ll_point)
-{
-  geometry_msgs::msg::Point point;
-  point.x = ll_point.x();
-  point.y = ll_point.y();
-  point.z = ll_point.z();
-  return point;
-}
-
-inline double calcDist2D(const geometry_msgs::msg::Point & p1, const geometry_msgs::msg::Point & p2)
-{
-  const double dx = p1.x - p2.x;
-  const double dy = p1.y - p2.y;
-  return std::hypot(dx, dy);
-}

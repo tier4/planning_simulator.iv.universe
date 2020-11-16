@@ -19,6 +19,7 @@
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <scenario_api_utils/scenario_api_utils.h>
 
 #include <boost/algorithm/clamp.hpp>
 #include <boost/geometry.hpp>
@@ -31,6 +32,26 @@ namespace bg = boost::geometry;
 typedef bg::model::d2::point_xy<double> Point;
 typedef bg::model::linestring<Point> Line;
 typedef bg::model::polygon<Point> Polygon;
+
+namespace {
+
+inline geometry_msgs::msg::Point toMsg(const lanelet::ConstPoint3d & ll_point)
+{
+  geometry_msgs::msg::Point point;
+  point.x = ll_point.x();
+  point.y = ll_point.y();
+  point.z = ll_point.z();
+  return point;
+}
+
+inline double calcDist2D(const geometry_msgs::msg::Point & p1, const geometry_msgs::msg::Point & p2)
+{
+  const double dx = p1.x - p2.x;
+  const double dy = p1.y - p2.y;
+  return std::hypot(dx, dy);
+}
+
+}
 
 NPCSimulatorNode::NPCSimulatorNode(rclcpp::Node& node)
 : logger_(rclcpp::get_logger("npc_simulator")),
@@ -137,7 +158,7 @@ void NPCSimulatorNode::mainTimerCallback()
       double predicted_distance =
         future_obj->initial_state.twist_covariance.twist.linear.x * future_consideration_time_;
       predicted_distance = std::min(predicted_distance, max_consideration_dist_);
-      updateObjectPosition(future_obj, predicted_distance, getQuatFromYaw(0));
+      updateObjectPosition(future_obj, predicted_distance, quatFromYaw(0));
 
       //calculate posture to follow lane (by predicted position)
       geometry_msgs::msg::Quaternion quat =
@@ -412,7 +433,7 @@ geometry_msgs::msg::Quaternion NPCSimulatorNode::calcQuatForMove(
   double diff_yaw_for_follow = getFollowLaneDiffYaw(
     diff_yaw, current_lane_dist, obj.initial_state.twist_covariance.twist.linear.x, dt,
     max_yaw_rate);
-  q = getQuatFromYaw(diff_yaw_for_follow);
+  q = quatFromYaw(diff_yaw_for_follow);
   return q;
 }
 
@@ -518,7 +539,7 @@ int NPCSimulatorNode::getCurrentLaneletID(
 
     double current_yaw = tf2::getYaw(obj_pose.orientation);
     double lane_yaw = lanelet::utils::getLaneletAngle(lanelet.second, obj_pose.position);
-    double delta_yaw = std::abs(normalizeRadianRenamed(current_yaw - lane_yaw));
+    double delta_yaw = std::abs(normalizeRadian(current_yaw - lane_yaw));
     auto lanetag = lanelet.second.attributeOr("turn_direction", "else");
     double current_dist =
       lanelet.first + addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_);
@@ -567,7 +588,7 @@ double NPCSimulatorNode::getCurrentDiffYaw(
   const geometry_msgs::msg::Pose & pose, const double lane_yaw)
 {
   double current_yaw = tf2::getYaw(pose.orientation);
-  return normalizeRadianRenamed(lane_yaw - current_yaw);
+  return normalizeRadian(lane_yaw - current_yaw);
 }
 
 double NPCSimulatorNode::getFootOfPerpendicularLineLength(
@@ -632,7 +653,7 @@ double NPCSimulatorNode::getCurrentLaneDist(
   double diff_y = nearest_y - pose.position.y;
   double current_yaw = tf2::getYaw(pose.orientation);
   double nearest_yaw = atan2(diff_y, diff_x);
-  double diff_yaw = normalizeRadianRenamed(nearest_yaw - current_yaw);
+  double diff_yaw = normalizeRadian(nearest_yaw - current_yaw);
   if (std::abs(diff_yaw) < 10e-04) return 0.0;
   double base_dist = pl_dist_from_center_line * (diff_yaw / std::abs(diff_yaw));
 

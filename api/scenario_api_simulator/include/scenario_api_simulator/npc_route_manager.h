@@ -51,7 +51,7 @@ public:
   /**
    * @brief constructor
    */
-  NPCRouteManager(rclcpp::Node::SharedPtr node);
+  NPCRouteManager(rclcpp::Node& node);
 
   /**
    * @brief destructor

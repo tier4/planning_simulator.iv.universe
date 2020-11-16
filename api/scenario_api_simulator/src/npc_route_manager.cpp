@@ -22,11 +22,11 @@
 
 #include <functional>
 
-NPCRouteManager::NPCRouteManager(rclcpp::Node::SharedPtr node)
-: logger_(node->get_logger().get_child("npcl_route_manager")),
-  clock_(node->get_clock())
+NPCRouteManager::NPCRouteManager(rclcpp::Node& node)
+: logger_(node.get_logger().get_child("npcl_route_manager")),
+  clock_(node.get_clock())
 {
-  sub_map_ = node->create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
+  sub_map_ = node.create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
     "input/vectormap", 1, std::bind(
       &NPCRouteManager::callbackMap, this,
       std::placeholders::_1));
