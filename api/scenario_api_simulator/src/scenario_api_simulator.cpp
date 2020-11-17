@@ -31,7 +31,7 @@ ScenarioAPISimulator::ScenarioAPISimulator(rclcpp::Node::SharedPtr node)
 {
   /* initializer*/
   npc_route_manager_ = std::make_shared<NPCRouteManager>(*node);
-  npc_simulator_ = std::make_shared<NPCSimulatorNode>(*node);
+  npc_simulator_ = std::make_shared<NPCSimulator>(*node);
 
   /* register publisher */
   rclcpp::QoS durable_qos{1};

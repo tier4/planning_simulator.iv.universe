@@ -14,7 +14,7 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-ament_auto_add_library(${PROJECT_NAME} STATIC
+ament_auto_add_library(${PROJECT_NAME}
   src/scenario_api_simulator.cpp
   src/npc_route_manager.cpp
   )

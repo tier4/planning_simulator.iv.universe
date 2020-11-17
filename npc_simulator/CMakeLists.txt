@@ -54,7 +54,8 @@ target_include_directories(${PROJECT_NAME}_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BIN_DIR}/rosidl_generator_cpp>
   $<INSTALL_INTERFACE:include>
-  )
+  PRIVATE "${Boost_INCLUDE_DIR}"
+)
 
 # capitalize the boost dependency
 set(node_deps ${${PROJECT_NAME}_BUILD_DEPENDS})

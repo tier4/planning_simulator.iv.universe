@@ -42,7 +42,7 @@
 #include <random>
 #include <tuple>
 
-class NPCSimulatorNode
+class NPCSimulator
 {
 private:
   rclcpp::Logger logger_;
@@ -177,16 +177,16 @@ private:
    *
    * @param duration Time to wait before timer is triggered
    * @param ptr_to_member_fn The timer callback, required to be a pointer to a member function
-   * of NPCSimulatorNode
+   * of NPCSimulator
    *
    * @return the timer
    */
   rclcpp::TimerBase::SharedPtr initTimer(
-    rclcpp::Node& node, const rclcpp::Duration & duration, void (NPCSimulatorNode::*ptr_to_member_fn)(void));
+    rclcpp::Node& node, const rclcpp::Duration & duration, void (NPCSimulator::*ptr_to_member_fn)(void));
 
 public:
-  NPCSimulatorNode(rclcpp::Node& node);
-  ~NPCSimulatorNode(){};
+  NPCSimulator(rclcpp::Node& node);
+  ~NPCSimulator(){};
 
   bool getObject(
     const npc_simulator::srv::GetObject::Request::SharedPtr req,

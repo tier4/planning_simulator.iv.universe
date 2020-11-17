@@ -53,7 +53,7 @@ inline double calcDist2D(const geometry_msgs::msg::Point & p1, const geometry_ms
 
 }
 
-NPCSimulatorNode::NPCSimulatorNode(rclcpp::Node& node)
+NPCSimulator::NPCSimulator(rclcpp::Node& node)
 : logger_(rclcpp::get_logger("npc_simulator")),
   clock_(node.get_clock()),
   tf_buffer_(clock_),
@@ -84,23 +84,23 @@ NPCSimulatorNode::NPCSimulatorNode(rclcpp::Node& node)
 
   // register callback
   engage_sub_ = node.create_subscription<std_msgs::msg::Bool>(
-    "input/engage", large_queue_size, std::bind(&NPCSimulatorNode::engageCallback, this, _1));
+    "input/engage", large_queue_size, std::bind(&NPCSimulator::engageCallback, this, _1));
   object_sub_ = node.create_subscription<npc_simulator::msg::Object>(
-    "input/object", large_queue_size, std::bind(&NPCSimulatorNode::objectCallback, this, _1));
+    "input/object", large_queue_size, std::bind(&NPCSimulator::objectCallback, this, _1));
   map_sub_ = node.create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
     "input/vector_map", single_element_in_queue,
-    std::bind(&NPCSimulatorNode::mapCallback, this, _1));
+    std::bind(&NPCSimulator::mapCallback, this, _1));
   pose_sub_ = node.create_subscription<geometry_msgs::msg::PoseStamped>(
     "input/ego_vehicle_pose", single_element_in_queue,
-    std::bind(&NPCSimulatorNode::poseCallback, this, _1));
+    std::bind(&NPCSimulator::poseCallback, this, _1));
   getobject_srv_ = node.create_service<npc_simulator::srv::GetObject>(
-    "get_object", std::bind(&NPCSimulatorNode::getObject, this, _1, _2));
+    "get_object", std::bind(&NPCSimulator::getObject, this, _1, _2));
 
-  timer_main_ = initTimer(node, rclcpp::Duration(0.1), &NPCSimulatorNode::mainTimerCallback);
-  timer_pub_info_ = initTimer(node, rclcpp::Duration(0.02), &NPCSimulatorNode::pubInfoTimerCallback);
+  timer_main_ = initTimer(node, rclcpp::Duration(0.1), &NPCSimulator::mainTimerCallback);
+  timer_pub_info_ = initTimer(node, rclcpp::Duration(0.02), &NPCSimulator::pubInfoTimerCallback);
 }
 
-bool NPCSimulatorNode::getObject(
+bool NPCSimulator::getObject(
   const npc_simulator::srv::GetObject::Request::SharedPtr req,
   const npc_simulator::srv::GetObject::Response::SharedPtr res)
 {
@@ -117,7 +117,7 @@ bool NPCSimulatorNode::getObject(
   return false;
 }
 
-void NPCSimulatorNode::mainTimerCallback()
+void NPCSimulator::mainTimerCallback()
 {
   rclcpp::Time current_time = clock_->now();
 
@@ -183,14 +183,14 @@ void NPCSimulatorNode::mainTimerCallback()
   }
 }
 
-void NPCSimulatorNode::pubInfoTimerCallback()
+void NPCSimulator::pubInfoTimerCallback()
 {
   //publish npc info for visulaization
   const auto autoware_perception_msg = convertObjectMsgToAutowarePerception(objects_, true);
   debug_object_pub_->publish(autoware_perception_msg);
 }
 
-void NPCSimulatorNode::updateObjectPosition(
+void NPCSimulator::updateObjectPosition(
   npc_simulator::msg::Object * obj, const double move_distance,
   const geometry_msgs::msg::Quaternion diff_quat)
 {
@@ -213,12 +213,12 @@ void NPCSimulatorNode::updateObjectPosition(
     getNearestZPos(obj->initial_state.pose_covariance.pose) + obj->shape.dimensions.z / 2.0;
 }
 
-void NPCSimulatorNode::engageCallback(const std_msgs::msg::Bool::ConstSharedPtr engage)
+void NPCSimulator::engageCallback(const std_msgs::msg::Bool::ConstSharedPtr engage)
 {
   engage_state_ = engage->data;
 }
 
-void NPCSimulatorNode::inputImuInfo(
+void NPCSimulator::inputImuInfo(
   npc_simulator::msg::Object * obj, const double prev_vel, const double prev_yaw,
   const double delta_time)
 {
@@ -230,7 +230,7 @@ void NPCSimulatorNode::inputImuInfo(
   obj->imu.angular_velocity.z = current_yaw_rate;
 }
 
-void NPCSimulatorNode::inputVelocityZ(
+void NPCSimulator::inputVelocityZ(
   npc_simulator::msg::Object * obj, const double prev_z_pos, const double delta_time)
 {
   // calculate velocity_z by current z-pos and previous z-pos
@@ -240,7 +240,7 @@ void NPCSimulatorNode::inputVelocityZ(
   obj->initial_state.twist_covariance.twist.linear.z = velocity_z;
 }
 
-bool NPCSimulatorNode::checkValidLaneChange(
+bool NPCSimulator::checkValidLaneChange(
   int current_lane_id, const int lane_change_id, int & result_lane_id)
 {
   auto current_lane = lanelet_map_ptr_->laneletLayer.get(current_lane_id);
@@ -261,7 +261,7 @@ bool NPCSimulatorNode::checkValidLaneChange(
   return false;
 }
 
-bool NPCSimulatorNode::checkValidLaneChange(
+bool NPCSimulator::checkValidLaneChange(
   const int current_lane_id, const std::string & lane_change_dir, int & result_lane_id)
 {
   auto current_lane = lanelet_map_ptr_->laneletLayer.get(current_lane_id);
@@ -289,7 +289,7 @@ bool NPCSimulatorNode::checkValidLaneChange(
   return true;
 }
 
-bool NPCSimulatorNode::checkValidUTurn(
+bool NPCSimulator::checkValidUTurn(
   const geometry_msgs::msg::Pose & obj_pose, const int current_lane_id, int & result_lane_id)
 {
   // TODO: Is there API to get opposite adjacent lane???
@@ -320,7 +320,7 @@ bool NPCSimulatorNode::checkValidUTurn(
   return true;
 }
 
-bool NPCSimulatorNode::checkToFinishLaneChange(
+bool NPCSimulator::checkToFinishLaneChange(
   const npc_simulator::msg::Object & obj, const int lane_id)
 {
   const double current_dist = getCurrentLaneDist(
@@ -336,7 +336,7 @@ bool NPCSimulatorNode::checkToFinishLaneChange(
   return false;
 }
 
-int NPCSimulatorNode::DecideLaneIdWithLaneChangeMode(
+int NPCSimulator::DecideLaneIdWithLaneChangeMode(
   npc_simulator::msg::Object * obj, const int current_lane_id)
 {
   // decide current lane
@@ -395,7 +395,7 @@ int NPCSimulatorNode::DecideLaneIdWithLaneChangeMode(
   return lane_id;
 }
 
-geometry_msgs::msg::Quaternion NPCSimulatorNode::calcQuatForMove(
+geometry_msgs::msg::Quaternion NPCSimulator::calcQuatForMove(
   npc_simulator::msg::Object & obj, int current_lane_id, double dt)
 {
   geometry_msgs::msg::Quaternion q;
@@ -437,7 +437,7 @@ geometry_msgs::msg::Quaternion NPCSimulatorNode::calcQuatForMove(
   return q;
 }
 
-void NPCSimulatorNode::updateVelocity(npc_simulator::msg::Object * obj, double dt)
+void NPCSimulator::updateVelocity(npc_simulator::msg::Object * obj, double dt)
 {
   const double current_vel = obj->initial_state.twist_covariance.twist.linear.x;
   const double current_vel_sign = boost::math::sign(current_vel);
@@ -477,7 +477,7 @@ void NPCSimulatorNode::updateVelocity(npc_simulator::msg::Object * obj, double d
   obj->initial_state.twist_covariance.twist.linear.x = update_vel;
 }
 
-double NPCSimulatorNode::addCostByLaneTag(
+double NPCSimulator::addCostByLaneTag(
   const int lane_follow_dir, const std::string lanetag, const double base_cost)
 {
   double cost = 0;
@@ -503,7 +503,7 @@ double NPCSimulatorNode::addCostByLaneTag(
   return cost;
 }
 
-int NPCSimulatorNode::getCurrentLaneletID(
+int NPCSimulator::getCurrentLaneletID(
   const npc_simulator::msg::Object & obj, const bool with_target_lane, const double max_dist,
   const double max_delta_yaw)
 {
@@ -565,7 +565,7 @@ int NPCSimulatorNode::getCurrentLaneletID(
   }
 }
 
-double NPCSimulatorNode::getRemainingLaneDistance(const geometry_msgs::msg::Pose pose, int lane_id)
+double NPCSimulator::getRemainingLaneDistance(const geometry_msgs::msg::Pose pose, int lane_id)
 {
   lanelet::Lanelet current_lanelet = lanelet_map_ptr_->laneletLayer.get(lane_id);
   const auto & centerline2d = lanelet::utils::to2D(current_lanelet.centerline());
@@ -577,21 +577,21 @@ double NPCSimulatorNode::getRemainingLaneDistance(const geometry_msgs::msg::Pose
   return remain_distance;
 }
 
-double NPCSimulatorNode::getCurrentLaneYaw(const geometry_msgs::msg::Pose & pose, const int lane_id)
+double NPCSimulator::getCurrentLaneYaw(const geometry_msgs::msg::Pose & pose, const int lane_id)
 {
   lanelet::Lanelet current_lanelet = lanelet_map_ptr_->laneletLayer.get(lane_id);
   double lane_yaw = lanelet::utils::getLaneletAngle(current_lanelet, pose.position);
   return lane_yaw;
 }
 
-double NPCSimulatorNode::getCurrentDiffYaw(
+double NPCSimulator::getCurrentDiffYaw(
   const geometry_msgs::msg::Pose & pose, const double lane_yaw)
 {
   double current_yaw = tf2::getYaw(pose.orientation);
   return normalizeRadian(lane_yaw - current_yaw);
 }
 
-double NPCSimulatorNode::getFootOfPerpendicularLineLength(
+double NPCSimulator::getFootOfPerpendicularLineLength(
   const double lx1, const double ly1, const double lx2, const double ly2,
   const geometry_msgs::msg::Pose & pose)
 {
@@ -609,7 +609,7 @@ double NPCSimulatorNode::getFootOfPerpendicularLineLength(
   return pl_length;
 }
 
-double NPCSimulatorNode::getCurrentLaneDist(
+double NPCSimulator::getCurrentLaneDist(
   const geometry_msgs::msg::Pose & pose, const double offset_rate_from_center, const int lane_id)
 {
   lanelet::Lanelet current_lanelet = lanelet_map_ptr_->laneletLayer.get(lane_id);
@@ -673,7 +673,7 @@ double NPCSimulatorNode::getCurrentLaneDist(
   return base_dist + offset_dist;
 }
 
-double NPCSimulatorNode::calcMaxYawRate(const npc_simulator::msg::Object & obj)
+double NPCSimulator::calcMaxYawRate(const npc_simulator::msg::Object & obj)
 {
   if (obj.lane_change_dir.dir == npc_simulator::msg::LaneChangeDir::LANE_CHANGE_UTURN) {
     // when to do u-turn, restrict max_yaw_rate
@@ -682,7 +682,7 @@ double NPCSimulatorNode::calcMaxYawRate(const npc_simulator::msg::Object & obj)
   return max_yaw_rate_coef_ * std::fabs(obj.initial_state.twist_covariance.twist.linear.x);
 }
 
-double NPCSimulatorNode::calcMaxSpeed(const npc_simulator::msg::Object & obj, const int obj_lane_id)
+double NPCSimulator::calcMaxSpeed(const npc_simulator::msg::Object & obj, const int obj_lane_id)
 {
   if (obj.lane_change_dir.dir == npc_simulator::msg::LaneChangeDir::LANE_CHANGE_UTURN) {
     // when to do u-turn, restrict max_velocity
@@ -705,7 +705,7 @@ double NPCSimulatorNode::calcMaxSpeed(const npc_simulator::msg::Object & obj, co
   return max_speed_;
 }
 
-bool NPCSimulatorNode::calcCollisionDistance(
+bool NPCSimulator::calcCollisionDistance(
   const npc_simulator::msg::Object & obj, double * col_dist)
 {
   if (!obj.stop_by_vehicle) {
@@ -788,7 +788,7 @@ bool NPCSimulatorNode::calcCollisionDistance(
   */
 }
 
-geometry_msgs::msg::Pose NPCSimulatorNode::getRelativePose(
+geometry_msgs::msg::Pose NPCSimulator::getRelativePose(
   const geometry_msgs::msg::Pose & source, const geometry_msgs::msg::Pose & target)
 {
   tf2::Transform transform_src, transform_trg;
@@ -807,7 +807,7 @@ geometry_msgs::msg::Pose NPCSimulatorNode::getRelativePose(
   return source2target;
 }
 
-double NPCSimulatorNode::calcSpeedToAvoidCollision(const double col_dist)
+double NPCSimulator::calcSpeedToAvoidCollision(const double col_dist)
 {
   if (col_dist <= margin_dist_to_avoid_collision_) {
     return 0.0;
@@ -816,7 +816,7 @@ double NPCSimulatorNode::calcSpeedToAvoidCollision(const double col_dist)
   return (col_dist - margin_dist_to_avoid_collision_) / margin_time_to_avoid_collision_;
 }
 
-double NPCSimulatorNode::getFollowLaneDiffYaw(
+double NPCSimulator::getFollowLaneDiffYaw(
   const double diff_yaw, const double signed_lane_dist, const double current_vel, const double dt,
   const double max_yaw_rate)
 {
@@ -855,7 +855,7 @@ double NPCSimulatorNode::getFollowLaneDiffYaw(
   return lane_follow_yaw;
 }
 
-double NPCSimulatorNode::getNearestZPos(const geometry_msgs::msg::Pose & pose)
+double NPCSimulator::getNearestZPos(const geometry_msgs::msg::Pose & pose)
 {
   //get current lanelet id
   lanelet::BasicPoint2d search_point(pose.position.x, pose.position.y);
@@ -912,7 +912,7 @@ double NPCSimulatorNode::getNearestZPos(const geometry_msgs::msg::Pose & pose)
   return nearest_z;
 }
 
-double NPCSimulatorNode::calcSmoothZPos(
+double NPCSimulator::calcSmoothZPos(
   geometry_msgs::msg::Point current_point, geometry_msgs::msg::Point p1,
   geometry_msgs::msg::Point p2)
 {
@@ -940,7 +940,7 @@ double NPCSimulatorNode::calcSmoothZPos(
   return p1.z * (1 - coef_k) + p2.z * coef_k;
 }
 
-void NPCSimulatorNode::objectCallback(const npc_simulator::msg::Object::ConstSharedPtr msg)
+void NPCSimulator::objectCallback(const npc_simulator::msg::Object::ConstSharedPtr msg)
 {
   switch (msg->action) {
     case npc_simulator::msg::Object::ADD: {
@@ -1097,7 +1097,7 @@ void NPCSimulatorNode::objectCallback(const npc_simulator::msg::Object::ConstSha
   }
 }
 
-void NPCSimulatorNode::mapCallback(const autoware_lanelet2_msgs::msg::MapBin::ConstSharedPtr msg)
+void NPCSimulator::mapCallback(const autoware_lanelet2_msgs::msg::MapBin::ConstSharedPtr msg)
 {
   RCLCPP_INFO(logger_, "Start loading lanelet");
   lanelet_map_ptr_ = std::make_shared<lanelet::LaneletMap>();
@@ -1106,12 +1106,12 @@ void NPCSimulatorNode::mapCallback(const autoware_lanelet2_msgs::msg::MapBin::Co
   RCLCPP_INFO(logger_, "Map is loaded");
 }
 
-void NPCSimulatorNode::poseCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
+void NPCSimulator::poseCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 {
   ego_pose_ = *msg;
 }
 
-dummy_perception_publisher::msg::Object NPCSimulatorNode::convertObjectMsgToDummyPerception(
+dummy_perception_publisher::msg::Object NPCSimulator::convertObjectMsgToDummyPerception(
   npc_simulator::msg::Object * obj)
 {
   dummy_perception_publisher::msg::Object output_obj;
@@ -1146,7 +1146,7 @@ dummy_perception_publisher::msg::Object NPCSimulatorNode::convertObjectMsgToDumm
 }
 
 autoware_perception_msgs::msg::DynamicObjectArray
-NPCSimulatorNode::convertObjectMsgToAutowarePerception(
+NPCSimulator::convertObjectMsgToAutowarePerception(
   const std::vector<npc_simulator::msg::Object> & obj_vec, bool prediction)
 {
   autoware_perception_msgs::msg::DynamicObjectArray output_msg;
@@ -1182,8 +1182,8 @@ NPCSimulatorNode::convertObjectMsgToAutowarePerception(
   return output_msg;
 }
 
-rclcpp::TimerBase::SharedPtr NPCSimulatorNode::initTimer(rclcpp::Node& node,
-  const rclcpp::Duration & duration, void (NPCSimulatorNode::*ptr_to_member_fn)(void))
+rclcpp::TimerBase::SharedPtr NPCSimulator::initTimer(rclcpp::Node& node,
+  const rclcpp::Duration & duration, void (NPCSimulator::*ptr_to_member_fn)(void))
 {
   auto timer_callback = std::bind(ptr_to_member_fn, this);
   rclcpp::TimerBase::SharedPtr timer =
