@@ -22,7 +22,9 @@
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<NPCSimulatorNode>());
+  auto spin_node = std::make_shared<rclcpp::Node>("npc_simulator");
+  auto npc_simulator = std::make_shared<NPCSimulator>(*spin_node);
+  rclcpp::spin(spin_node);
   rclcpp::shutdown();
 
   return 0;

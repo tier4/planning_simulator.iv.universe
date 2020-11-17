@@ -42,9 +42,12 @@
 #include <random>
 #include <tuple>
 
-class NPCSimulatorNode : public rclcpp::Node
+class NPCSimulator
 {
 private:
+  rclcpp::Logger logger_;
+  rclcpp::Clock::SharedPtr clock_;
+
   rclcpp::Publisher<dummy_perception_publisher::msg::Object>::SharedPtr
     dummy_perception_object_pub_;
   rclcpp::Publisher<autoware_perception_msgs::msg::DynamicObjectArray>::SharedPtr
@@ -124,9 +127,6 @@ private:
   void inputVelocityZ(
     npc_simulator::msg::Object * obj, const double prev_z_pos, const double delta_time);
 
-  bool getObject(
-    const npc_simulator::srv::GetObject::Request::SharedPtr req,
-    const npc_simulator::srv::GetObject::Response::SharedPtr res);
   void engageCallback(const std_msgs::msg::Bool::ConstSharedPtr engage);
   void objectCallback(const npc_simulator::msg::Object::ConstSharedPtr msg);
   void mapCallback(const autoware_lanelet2_msgs::msg::MapBin::ConstSharedPtr msg);
@@ -177,48 +177,18 @@ private:
    *
    * @param duration Time to wait before timer is triggered
    * @param ptr_to_member_fn The timer callback, required to be a pointer to a member function
-   * of NPCSimulatorNode
+   * of NPCSimulator
    *
    * @return the timer
    */
   rclcpp::TimerBase::SharedPtr initTimer(
-    const rclcpp::Duration & duration, void (NPCSimulatorNode::*ptr_to_member_fn)(void));
+    rclcpp::Node& node, const rclcpp::Duration & duration, void (NPCSimulator::*ptr_to_member_fn)(void));
 
 public:
-  NPCSimulatorNode();
-  ~NPCSimulatorNode(){};
+  NPCSimulator(rclcpp::Node& node);
+  ~NPCSimulator(){};
+
+  bool getObject(
+    const npc_simulator::srv::GetObject::Request::SharedPtr req,
+    const npc_simulator::srv::GetObject::Response::SharedPtr res);
 };
-
-constexpr double normalizeRadian(
-  const double rad, const double min_rad = -boost::math::constants::pi<double>(),
-  const double max_rad = boost::math::constants::pi<double>())
-{
-  const auto value = std::fmod(rad, 2 * boost::math::constants::pi<double>());
-  if (min_rad < value && value <= max_rad)
-    return value;
-  else
-    return value - std::copysign(2 * boost::math::constants::pi<double>(), value);
-}
-
-inline geometry_msgs::msg::Quaternion getQuatFromYaw(const double yaw)
-{
-  tf2::Quaternion quat;
-  quat.setRPY(0.0, 0.0, yaw);
-  return tf2::toMsg(quat);
-}
-
-inline geometry_msgs::msg::Point toMsg(const lanelet::ConstPoint3d & ll_point)
-{
-  geometry_msgs::msg::Point point;
-  point.x = ll_point.x();
-  point.y = ll_point.y();
-  point.z = ll_point.z();
-  return point;
-}
-
-inline double calcDist2D(const geometry_msgs::msg::Point & p1, const geometry_msgs::msg::Point & p2)
-{
-  const double dx = p1.x - p2.x;
-  const double dy = p1.y - p2.y;
-  return std::hypot(dx, dy);
-}

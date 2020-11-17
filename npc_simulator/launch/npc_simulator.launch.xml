@@ -6,7 +6,7 @@
   <arg name="lexus_param_file" default="$(find-pkg-share lexus_description)/config/vehicle_info.yaml" />
 
   <group ns="simulation">
-    <node pkg="npc_simulator" exec="npc_simulator_node" name="npc_simulator" output="screen">
+    <node pkg="npc_simulator" exec="npc_simulator_main" name="npc_simulator" output="screen">
       <param from="$(var lexus_param_file)" />
       <param name="/initial_engage_state" value="$(var initial_engage_state)"/>
       <remap from="/input/engage" to="npc_simulator/engage"/>
