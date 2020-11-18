@@ -48,7 +48,7 @@ ament_export_dependencies(rosidl_default_runtime)
 ###
 # create library
 ###
-add_library(${PROJECT_NAME}_node STATIC src/node.cpp)
+add_library(${PROJECT_NAME}_node SHARED src/node.cpp)
 target_link_libraries(${PROJECT_NAME}_node "${Boost_LIBRARY_DIR}")
 target_include_directories(${PROJECT_NAME}_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
