@@ -27,28 +27,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <tf/transform_listener.h>
-
-#include "npc_simulator/Object.h"
-
-#include "rviz/display_context.h"
-#include "rviz/properties/float_property.h"
-#include "rviz/properties/string_property.h"
-
-#include <unique_id/unique_id.h>
+#include <tf2_ros/transform_listener.h>
 
 #include "delete_all_objects.hpp"
 
-namespace rviz
+namespace rviz_plugins
 {
 NPCSimDeleteAllObjectsTool::NPCSimDeleteAllObjectsTool()
 {
   shortcut_key_ = 'd';
 
-  topic_property_ = new StringProperty(
+  topic_property_ = new rviz_common::properties::StringProperty(
     "Pose Topic", "/simulation/npc_simulator/object_info",
-    "The topic on which to publish dummy object info.", getPropertyContainer(), SLOT(updateTopic()),
-    this);
+    "The topic on which to publish dummy object info.", 
+    getPropertyContainer(), SLOT(updateTopic()), this);
 }
 
 void NPCSimDeleteAllObjectsTool::onInitialize()
@@ -60,26 +52,29 @@ void NPCSimDeleteAllObjectsTool::onInitialize()
 
 void NPCSimDeleteAllObjectsTool::updateTopic()
 {
-  dummy_object_info_pub_ = nh_.advertise<npc_simulator::Object>(topic_property_->getStdString(), 1);
+  rclcpp::Node::SharedPtr raw_node = 
+    context_->getRosNodeAbstraction().lock()->get_raw_node();
+  dummy_object_info_pub_ = raw_node->
+    create_publisher<npc_simulator::msg::Object>(topic_property_->getStdString(), 1);
+  clock_ = raw_node->get_clock();
 }
 
 void NPCSimDeleteAllObjectsTool::onPoseSet(double x, double y, double theta)
 {
-  const ros::Time current_time = ros::Time::now();
-  npc_simulator::Object output_msg;
+  npc_simulator::msg::Object output_msg;
   std::string fixed_frame = context_->getFixedFrame().toStdString();
 
   // header
   output_msg.header.frame_id = fixed_frame;
-  output_msg.header.stamp = current_time;
+  output_msg.header.stamp = clock_->now();
 
   // action
-  output_msg.action = npc_simulator::Object::DELETEALL;
+  output_msg.action = npc_simulator::msg::Object::DELETEALL;
 
-  dummy_object_info_pub_.publish(output_msg);
+  dummy_object_info_pub_->publish(output_msg);
 }
 
-}  // end namespace rviz
+}  // end namespace rviz_plugins
 
 #include <pluginlib/class_list_macros.hpp>
-PLUGINLIB_EXPORT_CLASS(rviz::NPCSimDeleteAllObjectsTool, rviz::Tool)
+PLUGINLIB_EXPORT_CLASS(rviz_plugins::NPCSimDeleteAllObjectsTool, rviz_common::Tool)
