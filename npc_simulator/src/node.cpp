@@ -96,8 +96,8 @@ NPCSimulator::NPCSimulator(rclcpp::Node& node)
   getobject_srv_ = node.create_service<npc_simulator::srv::GetObject>(
     "get_object", std::bind(&NPCSimulator::getObject, this, _1, _2));
 
-  timer_main_ = initTimer(node, rclcpp::Duration(0.1), &NPCSimulator::mainTimerCallback);
-  timer_pub_info_ = initTimer(node, rclcpp::Duration(0.02), &NPCSimulator::pubInfoTimerCallback);
+  timer_main_ = initTimer(node, rclcpp::Duration::from_seconds(0.1), &NPCSimulator::mainTimerCallback);
+  timer_pub_info_ = initTimer(node, rclcpp::Duration::from_seconds(0.02), &NPCSimulator::pubInfoTimerCallback);
 }
 
 bool NPCSimulator::getObject(
@@ -126,7 +126,7 @@ void NPCSimulator::mainTimerCallback()
   try {
     geometry_msgs::msg::TransformStamped ros_base_link2map;
     ros_base_link2map = tf_buffer_.lookupTransform(
-      /*target*/ "base_link", /*src*/ "map", current_time, rclcpp::Duration(0.5));
+      /*target*/ "base_link", /*src*/ "map", current_time, rclcpp::Duration::from_seconds(0.5));
     tf2::fromMsg(ros_base_link2map.transform, tf_base_link2map);
   } catch (tf2::TransformException & ex) {
     RCLCPP_WARN(logger_, "%s", ex.what());
@@ -954,7 +954,7 @@ void NPCSimulator::objectCallback(const npc_simulator::msg::Object::ConstSharedP
 
       try {
         geometry_msgs::msg::TransformStamped ros_input2map = tf_buffer_.lookupTransform(
-          msg->header.frame_id, "map", msg->header.stamp, rclcpp::Duration(0.5));
+          msg->header.frame_id, "map", msg->header.stamp, rclcpp::Duration::from_seconds(0.5));
         tf2::fromMsg(ros_input2map.transform, tf_input2map);
       } catch (tf2::TransformException & ex) {
         RCLCPP_WARN(logger_, "%s", ex.what());
@@ -997,7 +997,7 @@ void NPCSimulator::objectCallback(const npc_simulator::msg::Object::ConstSharedP
             geometry_msgs::msg::TransformStamped ros_input2map;
             ros_input2map = tf_buffer_.lookupTransform(
               /*target*/ msg->header.frame_id, /*src*/ "map", msg->header.stamp,
-              rclcpp::Duration(0.5));
+              rclcpp::Duration::from_seconds(0.5));
             tf2::fromMsg(ros_input2map.transform, tf_input2map);
           } catch (tf2::TransformException & ex) {
             RCLCPP_WARN(logger_, "%s", ex.what());
