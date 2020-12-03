@@ -20,7 +20,7 @@
 #include <npc_simulator/srv/get_object.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
-#include <lanelet2_extension/utility/utilities.h>
+#include <lanelet2_extension/utility/utilities.hpp>
 #include <autoware_lanelet2_msgs/msg/map_bin.hpp>
 #include <autoware_perception_msgs/msg/dynamic_object_array.hpp>
 #include <dummy_perception_publisher/msg/object.hpp>

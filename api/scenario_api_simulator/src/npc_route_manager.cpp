@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include <scenario_api_simulator/npc_route_manager.h>
+#include <scenario_api_simulator/npc_route_manager.hpp>
 
-#include <scenario_api_utils/scenario_api_utils.h>
+#include <scenario_api_utils/scenario_api_utils.hpp>
 #include <npc_simulator/msg/lane_follow_mode.hpp>
-#include <lanelet2_extension/utility/message_conversion.h>
+#include <lanelet2_extension/utility/message_conversion.hpp>
 
 #include <functional>
 

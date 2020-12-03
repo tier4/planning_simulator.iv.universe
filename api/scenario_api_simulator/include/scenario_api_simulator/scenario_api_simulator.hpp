@@ -23,7 +23,7 @@
 #include <unique_identifier_msgs/msg/uuid.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
-#include <npc_simulator/node.h>
+#include <npc_simulator/node.hpp>
 
 #include <unistd.h>
 
@@ -31,7 +31,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <scenario_api_simulator/npc_route_manager.h>
+#include <scenario_api_simulator/npc_route_manager.hpp>
 
 class ScenarioAPISimulator
 {

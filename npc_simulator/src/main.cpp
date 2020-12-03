@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <npc_simulator/node.h>
+#include <npc_simulator/node.hpp>
 
 #include <rclcpp/rclcpp.hpp>
 

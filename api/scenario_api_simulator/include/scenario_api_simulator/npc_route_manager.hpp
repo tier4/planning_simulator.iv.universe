@@ -21,7 +21,7 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/geometry/Lanelet.h>
-#include <lanelet2_extension/utility/utilities.h>
+#include <lanelet2_extension/utility/utilities.hpp>
 #include <npc_simulator/msg/object.hpp>
 #include <rclcpp/rclcpp.hpp>
 
