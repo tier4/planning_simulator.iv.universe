@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "npc_simulator/node.h"
+#include "npc_simulator/node.hpp"
 
-#include <lanelet2_extension/utility/message_conversion.h>
+#include <lanelet2_extension/utility/message_conversion.hpp>
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <scenario_api_utils/scenario_api_utils.h>
+#include <scenario_api_utils/scenario_api_utils.hpp>
 
 #include <boost/algorithm/clamp.hpp>
 #include <boost/geometry.hpp>

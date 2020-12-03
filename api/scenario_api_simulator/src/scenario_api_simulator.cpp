@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include <scenario_api_simulator/scenario_api_simulator.h>
+#include <scenario_api_simulator/scenario_api_simulator.hpp>
 
 #include <autoware_perception_msgs/msg/semantic.hpp>
 #include <autoware_perception_msgs/msg/shape.hpp>
 #include <dummy_perception_publisher/msg/initial_state.hpp>
-#include <scenario_api_utils/scenario_api_utils.h>
+#include <scenario_api_utils/scenario_api_utils.hpp>
 #include <unique_identifier_msgs/msg/uuid.hpp>
 
 #include <functional>
