@@ -5,10 +5,10 @@
   <description>The npc_simulator_rviz_plugin package</description>
 
   <maintainer email="tomoya.kimura@tier4.jp">Tomoya Kimura</maintainer>
-  <license>Apache2</license>
+  <license>Apache License 2.0</license>
 
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
   <depend>qtbase5-dev</depend>
   <depend>libqt5-core</depend>
