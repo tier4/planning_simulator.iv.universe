@@ -1,46 +1,48 @@
-/*
- * Copyright 2020 Tier IV, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2020 Tier IV, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#pragma once
-
-#include <npc_simulator/msg/object.hpp>
-#include <npc_simulator/srv/get_object.hpp>
-
-#include <lanelet2_core/geometry/Lanelet.h>
-#include <lanelet2_extension/utility/utilities.hpp>
-#include <autoware_lanelet2_msgs/msg/map_bin.hpp>
-#include <autoware_perception_msgs/msg/dynamic_object_array.hpp>
-#include <dummy_perception_publisher/msg/object.hpp>
-#include <vehicle_info_util/vehicle_info.hpp>
-
-#include <tf2/LinearMath/Transform.h>
-#include <tf2/convert.h>
-#include <tf2/transform_datatypes.h>
-#include <tf2/utils.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
-
-#include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <std_msgs/msg/bool.hpp>
+#ifndef NPC_SIMULATOR__NODE_HPP_
+#define NPC_SIMULATOR__NODE_HPP_
 
 #include <memory>
 #include <random>
+#include <string>
 #include <tuple>
+#include <vector>
+
+#include "npc_simulator/msg/object.hpp"
+#include "npc_simulator/srv/get_object.hpp"
+
+#include "lanelet2_core/geometry/Lanelet.h"
+#include "lanelet2_extension/utility/utilities.hpp"
+#include "autoware_lanelet2_msgs/msg/map_bin.hpp"
+#include "autoware_perception_msgs/msg/dynamic_object_array.hpp"
+#include "dummy_perception_publisher/msg/object.hpp"
+#include "vehicle_info_util/vehicle_info.hpp"
+
+#include "tf2/LinearMath/Transform.h"
+#include "tf2/convert.h"
+#include "tf2/transform_datatypes.h"
+#include "tf2/utils.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
+
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "std_msgs/msg/bool.hpp"
+
 
 class NPCSimulator
 {
@@ -64,10 +66,10 @@ private:
   std::vector<npc_simulator::msg::Object> objects_;
   vehicle_info_util::VehicleInfo vehicle_info_;
 
-  //simulation state
+  // simulation state
   bool engage_state_;
 
-  //vehicle info
+  // vehicle info
   geometry_msgs::msg::PoseStamped ego_pose_;
   double vehicle_width_;
   double vehicle_length_;
@@ -147,11 +149,11 @@ private:
     boost::math::constants::pi<double>() / 15.0;  // coef * current_velocity = max_yaw
   const double max_yaw_rate_uturn_ = boost::math::constants::pi<double>() / 6.0;
 
-  const double max_speed_ = 100.0;             //[m/s]
-  const double max_speed_z_ = 0.5;             //[m/s]
-  const double max_speed_lane_change_ = 10.0;  //[m/s]
-  const double max_speed_uturn_ = 2.0;         //[m/s]
-  const double max_speed_curve_ = 5.0;         //[m/s]
+  const double max_speed_ = 100.0;             // [m/s]
+  const double max_speed_z_ = 0.5;             // [m/s]
+  const double max_speed_lane_change_ = 10.0;  // [m/s]
+  const double max_speed_uturn_ = 2.0;         // [m/s]
+  const double max_speed_curve_ = 5.0;         // [m/s]
 
   const double thr_dist_lane_change_ = 1.0;
   const double thr_yaw_lane_change_ = boost::math::constants::pi<double>() / 10.0;
@@ -182,13 +184,16 @@ private:
    * @return the timer
    */
   rclcpp::TimerBase::SharedPtr initTimer(
-    rclcpp::Node& node, const rclcpp::Duration & duration, void (NPCSimulator::*ptr_to_member_fn)(void));
+    rclcpp::Node & node, const rclcpp::Duration & duration, void (NPCSimulator::* ptr_to_member_fn)(
+      void));
 
 public:
-  NPCSimulator(rclcpp::Node& node);
-  ~NPCSimulator(){};
+  explicit NPCSimulator(rclcpp::Node & node);
+  ~NPCSimulator() {}
 
   bool getObject(
     const npc_simulator::srv::GetObject::Request::SharedPtr req,
     const npc_simulator::srv::GetObject::Response::SharedPtr res);
 };
+
+#endif  // NPC_SIMULATOR__NODE_HPP_

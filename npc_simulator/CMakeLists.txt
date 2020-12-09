@@ -37,12 +37,12 @@ set(msg_dependencies
   geometry_msgs
   std_msgs
   unique_identifier_msgs
-  )
+)
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${msg_files}
   ${service_files}
   DEPENDENCIES ${msg_dependencies}
-  )
+)
 ament_export_dependencies(rosidl_default_runtime)
 
 ###
