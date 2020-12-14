@@ -165,19 +165,19 @@ void NPCSimulator::mainTimerCallback()
       updateVelocity(&obj, delta_time);
 
       // calculate future position
-      npc_simulator::msg::Object * future_obj = new npc_simulator::msg::Object(obj);  // deep copy
+      npc_simulator::msg::Object future_obj = obj;  // deep copy
       double predicted_distance =
-        future_obj->initial_state.twist_covariance.twist.linear.x * future_consideration_time_;
+        future_obj.initial_state.twist_covariance.twist.linear.x * future_consideration_time_;
       predicted_distance = std::min(predicted_distance, max_consideration_dist_);
-      updateObjectPosition(future_obj, predicted_distance, quatFromYaw(0));
+      updateObjectPosition(&future_obj, predicted_distance, quatFromYaw(0));
 
       // calculate posture to follow lane (by predicted position)
       geometry_msgs::msg::Quaternion quat =
-        calcQuatForMove(*future_obj, current_lane_id, delta_time);
+        calcQuatForMove(future_obj, current_lane_id, delta_time);
 
       // input lane change info
-      obj.lane_change_id = future_obj->lane_change_id;
-      obj.lane_change_dir.dir = future_obj->lane_change_dir.dir;
+      obj.lane_change_id = future_obj.lane_change_id;
+      obj.lane_change_dir.dir = future_obj.lane_change_dir.dir;
 
       // update object position, velocity, imu
       updateObjectPosition(&obj, move_distance, quat);
@@ -305,16 +305,16 @@ bool NPCSimulator::checkValidUTurn(
 {
   // TODO(Tomoya Kimura): Is there API to get opposite adjacent lane???
   // get opposite pose
-  geometry_msgs::msg::Pose * turn_pose = new geometry_msgs::msg::Pose(obj_pose);
+  geometry_msgs::msg::Pose turn_pose = obj_pose;
   tf2::Quaternion quat;
-  tf2::fromMsg(turn_pose->orientation, quat);
+  tf2::fromMsg(turn_pose.orientation, quat);
   tf2::Quaternion rotate_yaw_pi(0.0, 0.0, 1.0, 0.0);
   tf2::Quaternion rotated_quat = quat * rotate_yaw_pi;
-  turn_pose->orientation = tf2::toMsg(rotated_quat);
+  turn_pose.orientation = tf2::toMsg(rotated_quat);
 
   // get opposite lane
   npc_simulator::msg::Object obj;
-  obj.initial_state.pose_covariance.pose = *turn_pose;
+  obj.initial_state.pose_covariance.pose = turn_pose;
   obj.lane_follow_mode.mode = npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT;
   int ops_lane_id = getCurrentLaneletID(obj, false, max_dist_uturn_, max_delta_yaw_uturn_);
 
@@ -353,7 +353,7 @@ int NPCSimulator::DecideLaneIdWithLaneChangeMode(
 {
   // decide current lane
 
-  int lane_id;
+  int lane_id = 0;
   if (obj->lane_change_id != 0) {  // lane change
     // validation check of lane change target
     if (obj->lane_change_dir.dir != npc_simulator::msg::LaneChangeDir::LANE_CHANGE_UTURN) {
@@ -897,7 +897,7 @@ double NPCSimulator::getNearestZPos(const geometry_msgs::msg::Pose & pose)
   // search nearest centerline point from current_lanelet
 
   double min_dist = std::numeric_limits<double>::max();
-  size_t nearest_idx;
+  size_t nearest_idx = 0; // This value won't be used since centerline isn't empty
   size_t second_nearest_idx;
   for (size_t i = 0; i < centerline.size() - 1; i++) {
     const double dist = calcDist2D(pose.position, toMsg(centerline[i]));
@@ -1158,7 +1158,6 @@ dummy_perception_publisher::msg::Object NPCSimulator::convertObjectMsgToDummyPer
   if (obj->action == npc_simulator::msg::Object::ADD) {
     // from second time, obj.action must change to MODIFY
     obj->action = npc_simulator::msg::Object::MODIFY;
-    sleep(0.01);  // avoid missing msg
   }
   return output_obj;
 }
@@ -1171,7 +1170,7 @@ NPCSimulator::convertObjectMsgToAutowarePerception(
   output_msg.header.frame_id = "map";
   output_msg.header.stamp = clock_->now();
 
-  for (const auto obj : obj_vec) {
+  for (const auto & obj : obj_vec) {
     autoware_perception_msgs::msg::DynamicObject autoware_obj;
     // convert obj type from npc_simulator_object to autoware_dynamic_object
     autoware_obj.id = obj.id;
