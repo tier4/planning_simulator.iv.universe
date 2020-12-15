@@ -1,39 +1,46 @@
-/*
- * Copyright 2020 Tier IV, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2020 Tier IV, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "npc_simulator/node.hpp"
 
-#include <lanelet2_extension/utility/message_conversion.hpp>
+#include <algorithm>
+#include <limits>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <scenario_api_utils/scenario_api_utils.hpp>
+#include "lanelet2_extension/utility/message_conversion.hpp"
 
-#include <boost/algorithm/clamp.hpp>
-#include <boost/geometry.hpp>
-#include <boost/geometry/geometries/linestring.hpp>
-#include <boost/geometry/geometries/point_xy.hpp>
-#include <boost/geometry/geometries/polygon.hpp>
-#include <boost/math/special_functions/sign.hpp>
+#include "tf2/LinearMath/Quaternion.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "scenario_api_utils/scenario_api_utils.hpp"
+
+#include "boost/algorithm/clamp.hpp"
+#include "boost/geometry.hpp"
+#include "boost/geometry/geometries/linestring.hpp"
+#include "boost/geometry/geometries/point_xy.hpp"
+#include "boost/geometry/geometries/polygon.hpp"
+#include "boost/math/special_functions/sign.hpp"
 
 namespace bg = boost::geometry;
 typedef bg::model::d2::point_xy<double> Point;
 typedef bg::model::linestring<Point> Line;
 typedef bg::model::polygon<Point> Polygon;
 
-namespace {
+namespace
+{
 
 inline geometry_msgs::msg::Point toMsg(const lanelet::ConstPoint3d & ll_point)
 {
@@ -51,9 +58,9 @@ inline double calcDist2D(const geometry_msgs::msg::Point & p1, const geometry_ms
   return std::hypot(dx, dy);
 }
 
-}
+}  // namespace
 
-NPCSimulator::NPCSimulator(rclcpp::Node& node)
+NPCSimulator::NPCSimulator(rclcpp::Node & node)
 : logger_(rclcpp::get_logger("npc_simulator")),
   clock_(node.get_clock()),
   tf_buffer_(clock_),
@@ -96,8 +103,12 @@ NPCSimulator::NPCSimulator(rclcpp::Node& node)
   getobject_srv_ = node.create_service<npc_simulator::srv::GetObject>(
     "get_object", std::bind(&NPCSimulator::getObject, this, _1, _2));
 
-  timer_main_ = initTimer(node, rclcpp::Duration::from_seconds(0.1), &NPCSimulator::mainTimerCallback);
-  timer_pub_info_ = initTimer(node, rclcpp::Duration::from_seconds(0.02), &NPCSimulator::pubInfoTimerCallback);
+  timer_main_ = initTimer(
+    node, rclcpp::Duration::from_seconds(
+      0.1), &NPCSimulator::mainTimerCallback);
+  timer_pub_info_ = initTimer(
+    node, rclcpp::Duration::from_seconds(
+      0.02), &NPCSimulator::pubInfoTimerCallback);
 }
 
 bool NPCSimulator::getObject(
@@ -136,7 +147,7 @@ void NPCSimulator::mainTimerCallback()
   // update npc information
   for (auto & obj : objects_) {
     if (engage_state_) {
-      //memory original v, yaw for calculate Imu info(acceleration and yaw rate)
+      // memory original v, yaw for calculate Imu info(acceleration and yaw rate)
       const double prev_velocity = obj.initial_state.twist_covariance.twist.linear.x;
       const double prev_z_pos = obj.initial_state.pose_covariance.pose.position.z;
       const double prev_yaw = tf2::getYaw(obj.initial_state.pose_covariance.pose.orientation);
@@ -153,25 +164,25 @@ void NPCSimulator::mainTimerCallback()
       // update velocity x
       updateVelocity(&obj, delta_time);
 
-      //calculate future position
-      npc_simulator::msg::Object * future_obj = new npc_simulator::msg::Object(obj);  //deep copy
+      // calculate future position
+      npc_simulator::msg::Object future_obj = obj;  // deep copy
       double predicted_distance =
-        future_obj->initial_state.twist_covariance.twist.linear.x * future_consideration_time_;
+        future_obj.initial_state.twist_covariance.twist.linear.x * future_consideration_time_;
       predicted_distance = std::min(predicted_distance, max_consideration_dist_);
-      updateObjectPosition(future_obj, predicted_distance, quatFromYaw(0));
+      updateObjectPosition(&future_obj, predicted_distance, quatFromYaw(0));
 
-      //calculate posture to follow lane (by predicted position)
+      // calculate posture to follow lane (by predicted position)
       geometry_msgs::msg::Quaternion quat =
-        calcQuatForMove(*future_obj, current_lane_id, delta_time);
+        calcQuatForMove(future_obj, current_lane_id, delta_time);
 
-      //input lane change info
-      obj.lane_change_id = future_obj->lane_change_id;
-      obj.lane_change_dir.dir = future_obj->lane_change_dir.dir;
+      // input lane change info
+      obj.lane_change_id = future_obj.lane_change_id;
+      obj.lane_change_dir.dir = future_obj.lane_change_dir.dir;
 
       // update object position, velocity, imu
       updateObjectPosition(&obj, move_distance, quat);
       inputImuInfo(&obj, prev_velocity, prev_yaw, delta_time);
-      inputVelocityZ(&obj, prev_z_pos, delta_time);  //for visualization
+      inputVelocityZ(&obj, prev_z_pos, delta_time);  // for visualization
     }
 
     // update object time
@@ -185,7 +196,7 @@ void NPCSimulator::mainTimerCallback()
 
 void NPCSimulator::pubInfoTimerCallback()
 {
-  //publish npc info for visulaization
+  // publish npc info for visulaization
   const auto autoware_perception_msg = convertObjectMsgToAutowarePerception(objects_, true);
   debug_object_pub_->publish(autoware_perception_msg);
 }
@@ -194,7 +205,7 @@ void NPCSimulator::updateObjectPosition(
   npc_simulator::msg::Object * obj, const double move_distance,
   const geometry_msgs::msg::Quaternion diff_quat)
 {
-  //update object position 2D by move_distance
+  // update object position 2D by move_distance
   tf2::Transform tf_object_origin2moved_object;
   tf2::Transform tf_map2object_origin;
   tf2::Transform tf_map2moved_object;
@@ -208,7 +219,7 @@ void NPCSimulator::updateObjectPosition(
   tf2::toMsg(tf_map2moved_object, output_moved_object_pose.pose);
   obj->initial_state.pose_covariance.pose = output_moved_object_pose.pose;
 
-  //update object position z
+  // update object position z
   obj->initial_state.pose_covariance.pose.position.z =
     getNearestZPos(obj->initial_state.pose_covariance.pose) + obj->shape.dimensions.z / 2.0;
 }
@@ -277,14 +288,14 @@ bool NPCSimulator::checkValidLaneChange(
 
   if (!change_lane) {
     RCLCPP_WARN_STREAM(
-      logger_, "no right lane, current lane id=" << current_lane_id
-                                                      << ",lane change num= " << lane_change_dir);
+      logger_, "no right lane, current lane id=" << current_lane_id <<
+        ",lane change num= " << lane_change_dir);
     return false;
   }
 
   RCLCPP_INFO_STREAM(
-    logger_, "start lane change , current_lane_id =" << current_lane_id << ", target lane_id="
-                                                          << change_lane->id());
+    logger_, "start lane change , current_lane_id =" << current_lane_id << ", target lane_id=" <<
+      change_lane->id());
   result_lane_id = change_lane->id();
   return true;
 }
@@ -292,18 +303,18 @@ bool NPCSimulator::checkValidLaneChange(
 bool NPCSimulator::checkValidUTurn(
   const geometry_msgs::msg::Pose & obj_pose, const int current_lane_id, int & result_lane_id)
 {
-  // TODO: Is there API to get opposite adjacent lane???
+  // TODO(Tomoya Kimura): Is there API to get opposite adjacent lane???
   // get opposite pose
-  geometry_msgs::msg::Pose * turn_pose = new geometry_msgs::msg::Pose(obj_pose);
+  geometry_msgs::msg::Pose turn_pose = obj_pose;
   tf2::Quaternion quat;
-  tf2::fromMsg(turn_pose->orientation, quat);
+  tf2::fromMsg(turn_pose.orientation, quat);
   tf2::Quaternion rotate_yaw_pi(0.0, 0.0, 1.0, 0.0);
   tf2::Quaternion rotated_quat = quat * rotate_yaw_pi;
-  turn_pose->orientation = tf2::toMsg(rotated_quat);
+  turn_pose.orientation = tf2::toMsg(rotated_quat);
 
   // get opposite lane
   npc_simulator::msg::Object obj;
-  obj.initial_state.pose_covariance.pose = *turn_pose;
+  obj.initial_state.pose_covariance.pose = turn_pose;
   obj.lane_follow_mode.mode = npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT;
   int ops_lane_id = getCurrentLaneletID(obj, false, max_dist_uturn_, max_delta_yaw_uturn_);
 
@@ -330,7 +341,8 @@ bool NPCSimulator::checkToFinishLaneChange(
   const double diff_yaw =
     getCurrentDiffYaw(obj.initial_state.pose_covariance.pose, current_lane_yaw);
   if (
-    std::fabs(current_dist) < thr_dist_lane_change_ && std::fabs(diff_yaw) < thr_yaw_lane_change_) {
+    std::fabs(current_dist) < thr_dist_lane_change_ && std::fabs(diff_yaw) < thr_yaw_lane_change_)
+  {
     return true;
   }
   return false;
@@ -341,13 +353,13 @@ int NPCSimulator::DecideLaneIdWithLaneChangeMode(
 {
   // decide current lane
 
-  int lane_id;
-  if (obj->lane_change_id != 0) {  //lane change
-    //validation check of lane change target
+  int lane_id = 0;
+  if (obj->lane_change_id != 0) {  // lane change
+    // validation check of lane change target
     if (obj->lane_change_dir.dir != npc_simulator::msg::LaneChangeDir::LANE_CHANGE_UTURN) {
-      //In U-turn, no valid check
+      // In U-turn, no valid check
       if (!checkValidLaneChange(current_lane_id, obj->lane_change_id, lane_id)) {
-        //wait lane change until to be possible
+        // wait lane change until to be possible
         return current_lane_id;
       }
     }
@@ -358,18 +370,18 @@ int NPCSimulator::DecideLaneIdWithLaneChangeMode(
     return current_lane_id;
   } else if (obj->lane_change_dir.dir == npc_simulator::msg::LaneChangeDir::LEFT_LANE_CHANGE) {
     if (!checkValidLaneChange(current_lane_id, "left", lane_id)) {
-      //wait lane change until to be possible
+      // wait lane change until to be possible
       return current_lane_id;
     }
 
   } else if (obj->lane_change_dir.dir == npc_simulator::msg::LaneChangeDir::RIGHT_LANE_CHANGE) {
     if (!checkValidLaneChange(current_lane_id, "right", lane_id)) {
-      //wait lane change until to be possible
+      // wait lane change until to be possible
       return current_lane_id;
     }
   } else if (obj->lane_change_dir.dir == npc_simulator::msg::LaneChangeDir::LANE_CHANGE_UTURN) {
     if (!checkValidUTurn(obj->initial_state.pose_covariance.pose, current_lane_id, lane_id)) {
-      //wait u-turn change until to be possible
+      // wait u-turn change until to be possible
       return current_lane_id;
     }
   }
@@ -377,18 +389,18 @@ int NPCSimulator::DecideLaneIdWithLaneChangeMode(
   // check existance of lane with target id
   if (!lanelet_map_ptr_->laneletLayer.exists(lane_id)) {
     RCLCPP_WARN_STREAM(logger_, "target lane:" << current_lane_id << "does not exist.");
-    //return nearest lane
+    // return nearest lane
     return getCurrentLaneletID(*obj);
   }
 
   // check to finish lane-change
   if (checkToFinishLaneChange(*obj, lane_id)) {
-    //end lane change
+    // end lane change
     RCLCPP_INFO_STREAM(logger_, "lane change/u-turn end, lane id=" << lane_id);
     obj->lane_change_id = 0;
     obj->lane_change_dir.dir = npc_simulator::msg::LaneChangeDir::NO_LANE_CHANGE;
   } else {
-    //input target lane id
+    // input target lane id
     obj->lane_change_id = lane_id;
   }
 
@@ -443,7 +455,7 @@ void NPCSimulator::updateVelocity(npc_simulator::msg::Object * obj, double dt)
   const double current_vel_sign = boost::math::sign(current_vel);
   double current_vel_abs = std::fabs(current_vel);
 
-  //avoid collision/emergency stop (only object has plus velocity)
+  // avoid collision/emergency stop (only object has plus velocity)
   double col_dist;
   double speed_avoid_col = max_speed_;
   if (calcCollisionDistance(*obj, &col_dist)) {
@@ -457,17 +469,17 @@ void NPCSimulator::updateVelocity(npc_simulator::msg::Object * obj, double dt)
     }
     current_vel_abs = current_vel_abs + dif_vel;
     obj->initial_state.twist_covariance.twist.linear.x = current_vel_abs * current_vel_sign;
-    //do not update velocity naturally
+    // do not update velocity naturally
     return;
   }
 
-  //update velocity naturally
-  if (obj->accel < 1e-03) return;
+  // update velocity naturally
+  if (obj->accel < 1e-03) {return;}
 
-  if (std::fabs(obj->target_vel) > speed_avoid_col) return;
+  if (std::fabs(obj->target_vel) > speed_avoid_col) {return;}
 
   double dif_vel = obj->target_vel - current_vel;
-  if (std::fabs(dif_vel) < 1e-03) return;
+  if (std::fabs(dif_vel) < 1e-03) {return;}
   if (std::fabs(dif_vel) > std::fabs(obj->accel * dt)) {
     // clipping by accel
     dif_vel = dif_vel * std::fabs(obj->accel * dt / dif_vel);
@@ -484,20 +496,20 @@ double NPCSimulator::addCostByLaneTag(
   // introduce cost
   switch (lane_follow_dir) {
     case npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT: {
-      if (lanetag == "left") cost = base_cost;
-      if (lanetag == "right") cost = base_cost;
-      break;
-    }
+        if (lanetag == "left") {cost = base_cost;}
+        if (lanetag == "right") {cost = base_cost;}
+        break;
+      }
     case npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_LEFT: {
-      if (lanetag == "straight" || lanetag == "else") cost = base_cost;
-      if (lanetag == "right") cost = base_cost * 2;
-      break;
-    }
+        if (lanetag == "straight" || lanetag == "else") {cost = base_cost;}
+        if (lanetag == "right") {cost = base_cost * 2;}
+        break;
+      }
     case npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_RIGHT: {
-      if (lanetag == "straight" || lanetag == "else") cost += base_cost;
-      if (lanetag == "left") cost += base_cost * 2;
-      break;
-    }
+        if (lanetag == "straight" || lanetag == "else") {cost += base_cost;}
+        if (lanetag == "left") {cost += base_cost * 2;}
+        break;
+      }
   }
 
   return cost;
@@ -512,8 +524,8 @@ int NPCSimulator::getCurrentLaneletID(
   const int lane_follow_dir = obj.lane_follow_mode.mode;
 
   if (obj.target_route.data.size() == 0 && with_target_lane) {
-    //no target route
-    //search current lanelet in entire lanelet
+    // no target route
+    // search current lanelet in entire lanelet
     return getCurrentLaneletID(obj, false, max_dist_without_target_, max_delta_yaw_without_target_);
   }
 
@@ -524,7 +536,7 @@ int NPCSimulator::getCurrentLaneletID(
   bool is_found_target_closest_lanelet = false;
   double min_dist = max_dist;
   for (const auto & lanelet : nearest_lanelets) {
-    //check lenalet is involved in routes or not
+    // check lenalet is involved in routes or not
     bool is_lane_in_route = false;
     for (const auto & target_lane_id : obj_route.data) {
       if (lanelet.second.id() == target_lane_id) {
@@ -533,7 +545,7 @@ int NPCSimulator::getCurrentLaneletID(
     }
 
     if (!is_lane_in_route && with_target_lane) {
-      //when "with_target_lane" option is false, search current lanelet in entire lane.
+      // when "with_target_lane" option is false, search current lanelet in entire lane.
       continue;
     }
 
@@ -544,7 +556,7 @@ int NPCSimulator::getCurrentLaneletID(
     double current_dist =
       lanelet.first + addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_);
 
-    if (current_dist < max_dist && delta_yaw < max_delta_yaw and current_dist < min_dist) {
+    if (current_dist < max_dist && delta_yaw < max_delta_yaw && current_dist < min_dist) {
       min_dist = current_dist;
       target_closest_lanelet = lanelet.second;
       is_found_target_closest_lanelet = true;
@@ -552,11 +564,11 @@ int NPCSimulator::getCurrentLaneletID(
   }
 
   if (is_found_target_closest_lanelet) {
-    return (int)target_closest_lanelet.id();
+    return static_cast<int>(target_closest_lanelet.id());
   } else {
     if (with_target_lane) {
-      //nearest lane is not found in target route.
-      //search current lanelet in entire lanelet
+      // nearest lane is not found in target route.
+      // search current lanelet in entire lanelet
       return getCurrentLaneletID(
         obj, false, max_dist_without_target_, max_delta_yaw_without_target_);
     } else {
@@ -595,8 +607,8 @@ double NPCSimulator::getFootOfPerpendicularLineLength(
   const double lx1, const double ly1, const double lx2, const double ly2,
   const geometry_msgs::msg::Pose & pose)
 {
-  //calc line((lx1,ly1), (lx2,ly2))
-  //ax + by + c = 0
+  // calc line((lx1,ly1), (lx2,ly2))
+  // ax + by + c = 0
   const double a = ly2 - ly1;
   const double b = lx1 - lx2;
   const double c = lx2 * ly1 - lx1 * ly2;
@@ -604,7 +616,7 @@ double NPCSimulator::getFootOfPerpendicularLineLength(
   const double p_x = pose.position.x;
   const double p_y = pose.position.y;
 
-  //calc length of foot of perperndicular line
+  // calc length of foot of perperndicular line
   double pl_length = std::fabs(a * p_x + b * p_y + c) / std::sqrt(a * a + b * b);
   return pl_length;
 }
@@ -627,7 +639,7 @@ double NPCSimulator::getCurrentLaneDist(
   bool exist_nearest = false;
   for (size_t i = 0; i < centerline.size() - 1; i++) {
     const Line laneline = {{centerline[i].x(), centerline[i].y()},
-                           {centerline[i + 1].x(), centerline[i + 1].y()}};
+      {centerline[i + 1].x(), centerline[i + 1].y()}};
     const Point point2d(pose.position.x, pose.position.y);
     double dist = bg::distance(laneline, point2d);
     if (dist <= dist_from_center_line) {
@@ -646,7 +658,7 @@ double NPCSimulator::getCurrentLaneDist(
     return 0.0;
   }
 
-  //calculate distance from center line
+  // calculate distance from center line
   double nearest_x = (nearest_line.at(0).x() + nearest_line.at(1).x()) / 2.0;
   double nearest_y = (nearest_line.at(0).y() + nearest_line.at(1).y()) / 2.0;
   double diff_x = nearest_x - pose.position.x;
@@ -654,15 +666,15 @@ double NPCSimulator::getCurrentLaneDist(
   double current_yaw = tf2::getYaw(pose.orientation);
   double nearest_yaw = atan2(diff_y, diff_x);
   double diff_yaw = normalizeRadian(nearest_yaw - current_yaw);
-  if (std::abs(diff_yaw) < 10e-04) return 0.0;
+  if (std::abs(diff_yaw) < 10e-04) {return 0.0;}
   double base_dist = pl_dist_from_center_line * (diff_yaw / std::abs(diff_yaw));
 
-  //calculate offset distance
+  // calculate offset distance
   const auto rightline = current_lanelet.rightBound2d();
-  double path_width = 1e5;  //half width
+  double path_width = 1e5;  // half width
   for (size_t i = 0; i < rightline.size() - 1; i++) {
     const Line edgeline = {{rightline[i].x(), rightline[i].y()},
-                           {rightline[i + 1].x(), rightline[i + 1].y()}};
+      {rightline[i + 1].x(), rightline[i + 1].y()}};
     double dist_to_edge = bg::distance(edgeline, nearest_line);
     if (path_width > dist_to_edge) {
       path_width = dist_to_edge;
@@ -687,9 +699,10 @@ double NPCSimulator::calcMaxSpeed(const npc_simulator::msg::Object & obj, const 
   if (obj.lane_change_dir.dir == npc_simulator::msg::LaneChangeDir::LANE_CHANGE_UTURN) {
     // when to do u-turn, restrict max_velocity
     return max_speed_uturn_;
-  } else if (
+  } else if ( // NOLINT
     obj.lane_change_dir.dir == npc_simulator::msg::LaneChangeDir::LEFT_LANE_CHANGE ||
-    obj.lane_change_dir.dir == npc_simulator::msg::LaneChangeDir::RIGHT_LANE_CHANGE) {
+    obj.lane_change_dir.dir == npc_simulator::msg::LaneChangeDir::RIGHT_LANE_CHANGE)
+  {
     // when to change lane, restrict max_velocity
     return max_speed_lane_change_;
   }
@@ -697,7 +710,7 @@ double NPCSimulator::calcMaxSpeed(const npc_simulator::msg::Object & obj, const 
   if (lanelet_map_ptr_->laneletLayer.exists(obj_lane_id)) {
     auto lanelet = lanelet_map_ptr_->laneletLayer.get(obj_lane_id);
     std::string lanetag = lanelet.attributeOr("turn_direction", "else");
-    if (lanetag == std::string("left") or lanetag == std::string("right")) {
+    if (lanetag == std::string("left") || lanetag == std::string("right")) {
       return max_speed_curve_;
     }
   }
@@ -737,7 +750,8 @@ bool NPCSimulator::calcCollisionDistance(
     std::fabs(std::cos(rel_yaw)) * vehicle_width_ + std::fabs(std::sin(rel_yaw)) * vehicle_length_;
   if (
     std::fabs(relative_pose.position.y) >
-    (obj.shape.dimensions.y + rel_vehicle_width) / 2.0 + collsion_width_margin_) {
+    (obj.shape.dimensions.y + rel_vehicle_width) / 2.0 + collsion_width_margin_)
+  {
     // ego vehicle does not exists in front of npc
     return false;
   }
@@ -756,24 +770,24 @@ bool NPCSimulator::calcCollisionDistance(
   return true;
 
   /*
-  //get lane id of npc and ego vehicle
+  // get lane id of npc and ego vehicle
   auto npc_lane_id = getCurrentLaneletID(obj);
   npc_simulator::msg::Object ego;
   ego.initial_state.pose_covariance.pose = ego_pose_.pose;
   ego.lane_follow_mode.mode = npc_simulator::msg::LaneFollowMode::MOVE_LANE_FOLLOW_STRAIGHT;
   auto ego_lane_id = getCurrentLaneletID(ego);
 
-  //check lane id is valid or not
+  // check lane id is valid or not
   if (npc_lane_id < 0 || ego_lane_id < 0) {
     return false;
   }
 
-  //check ego car is in same lane with npc
+  // check ego car is in same lane with npc
   if (npc_lane_id == ego_lane_id) {
     return true;
   }
 
-  //check ego car is in next lane of npc' one
+  // check ego car is in next lane of npc' one
   auto lanelet = lanelet_map_ptr_->laneletLayer.get(npc_lane_id);
   auto next_lanelets = routing_graph_ptr_->following(lanelet, true);
   for (const auto next_lanelet : next_lanelets) {
@@ -783,7 +797,7 @@ bool NPCSimulator::calcCollisionDistance(
     }
   }
 
-  //ego car is not in relative lane with npc
+  // ego car is not in relative lane with npc
   return false;
   */
 }
@@ -794,12 +808,14 @@ geometry_msgs::msg::Pose NPCSimulator::getRelativePose(
   tf2::Transform transform_src, transform_trg;
 
   transform_src.setOrigin(tf2::Vector3(source.position.x, source.position.y, source.position.z));
-  transform_src.setRotation(tf2::Quaternion(
-    source.orientation.x, source.orientation.y, source.orientation.z, source.orientation.w));
+  transform_src.setRotation(
+    tf2::Quaternion(
+      source.orientation.x, source.orientation.y, source.orientation.z, source.orientation.w));
 
   transform_trg.setOrigin(tf2::Vector3(target.position.x, target.position.y, target.position.z));
-  transform_trg.setRotation(tf2::Quaternion(
-    target.orientation.x, target.orientation.y, target.orientation.z, target.orientation.w));
+  transform_trg.setRotation(
+    tf2::Quaternion(
+      target.orientation.x, target.orientation.y, target.orientation.z, target.orientation.w));
 
   tf2::Transform transform_s2t = transform_src.inverse() * transform_trg;
   geometry_msgs::msg::Pose source2target;
@@ -825,7 +841,8 @@ double NPCSimulator::getFollowLaneDiffYaw(
 
   // when to go to opposite lane, force the turn-direction
   if (std::fabs(
-        diff_yaw > boost::math::constants::pi<double>() / 1.2)) {  // |diff_yaw| is nearly to M_PI
+      diff_yaw > boost::math::constants::pi<double>() / 1.2))      // |diff_yaw| is nearly to M_PI
+  {
     if (signed_lane_dist > 0) {
       if (diff_yaw < 0) {
         restricted_dif_yaw = diff_yaw + boost::math::constants::pi<double>() * 2.0;
@@ -845,7 +862,7 @@ double NPCSimulator::getFollowLaneDiffYaw(
     signed_lane_dist * (p_coef_diff_dist_ + p_coef_diff_dist_vel_ * std::fabs(current_vel));
 
   if (current_vel < 0) {
-    //if obj has minus velocity, lane_follow_yaw_diff_dist flips.
+    // if obj has minus velocity, lane_follow_yaw_diff_dist flips.
     lane_follow_yaw_diff_dist *= -1;
   }
 
@@ -857,17 +874,17 @@ double NPCSimulator::getFollowLaneDiffYaw(
 
 double NPCSimulator::getNearestZPos(const geometry_msgs::msg::Pose & pose)
 {
-  //get current lanelet id
+  // get current lanelet id
   lanelet::BasicPoint2d search_point(pose.position.x, pose.position.y);
   const auto nearest_lanelets = lanelet::geometry::findNearest(
     lanelet_map_ptr_->laneletLayer, search_point, 1);  // distance, lanelet
 
   if (nearest_lanelets.size() == 0) {
-    //no nearest_lanelets
+    // no nearest_lanelets
     return 0.0;
   }
 
-  //get centerline from current lanelet
+  // get centerline from current lanelet
   const auto current_lanelet = nearest_lanelets.at(0).second;
   const auto centerline = current_lanelet.centerline3d();
   if (centerline.empty()) {
@@ -877,21 +894,21 @@ double NPCSimulator::getNearestZPos(const geometry_msgs::msg::Pose & pose)
     return 0.0;
   }
 
-  //search nearest centerline point from current_lanelet
+  // search nearest centerline point from current_lanelet
 
   double min_dist = std::numeric_limits<double>::max();
-  size_t nearest_idx;
+  size_t nearest_idx = 0; // This value won't be used since centerline isn't empty
   size_t second_nearest_idx;
   for (size_t i = 0; i < centerline.size() - 1; i++) {
     const double dist = calcDist2D(pose.position, toMsg(centerline[i]));
     if (dist < min_dist) {
-      //get z position from nearest centerline point
+      // get z position from nearest centerline point
       nearest_idx = i;
       min_dist = dist;
     }
   }
 
-  //search second nearest centerline point
+  // search second nearest centerline point
   if (nearest_idx == 0) {
     second_nearest_idx = nearest_idx + 1;
   } else if (nearest_idx == centerline.size() - 1) {
@@ -906,7 +923,7 @@ double NPCSimulator::getNearestZPos(const geometry_msgs::msg::Pose & pose)
     }
   }
 
-  //calc smooth z from two nearest point
+  // calc smooth z from two nearest point
   const double nearest_z = calcSmoothZPos(
     pose.position, toMsg(centerline[nearest_idx]), toMsg(centerline[second_nearest_idx]));
   return nearest_z;
@@ -925,7 +942,7 @@ double NPCSimulator::calcSmoothZPos(
   // proj(vec(p1_to_cp)) = k * vec(p1_to_p2)
 
   const double coef_k = (x_p1_to_cp * x_p1_to_p2 + y_p1_to_cp * y_p1_to_p2) /
-                        (x_p1_to_p2 * x_p1_to_p2 + y_p1_to_p2 * y_p1_to_p2);
+    (x_p1_to_p2 * x_p1_to_p2 + y_p1_to_p2 * y_p1_to_p2);
 
   if (coef_k < 0) {
     // current point is outer point of p1_to_p2 (p1 side)
@@ -944,156 +961,157 @@ void NPCSimulator::objectCallback(const npc_simulator::msg::Object::ConstSharedP
 {
   switch (msg->action) {
     case npc_simulator::msg::Object::ADD: {
-      for (const auto & each : objects_) {
-        if (each.id == msg->id) {
-          return;
-        }
-      }
-
-      tf2::Transform tf_input2map;
-
-      try {
-        geometry_msgs::msg::TransformStamped ros_input2map = tf_buffer_.lookupTransform(
-          msg->header.frame_id, "map", msg->header.stamp, rclcpp::Duration::from_seconds(0.5));
-        tf2::fromMsg(ros_input2map.transform, tf_input2map);
-      } catch (tf2::TransformException & ex) {
-        RCLCPP_WARN(logger_, "%s", ex.what());
-        return;
-      }
-
-      tf2::Transform tf_input2object_origin;
-      tf2::fromMsg(msg->initial_state.pose_covariance.pose, tf_input2object_origin);
-
-      npc_simulator::msg::Object object = *msg;
-      object.header.frame_id = "map";
-
-      tf2::Transform tf_map2object_origin = tf_input2map.inverse() * tf_input2object_origin;
-      tf2::toMsg(tf_map2object_origin, object.initial_state.pose_covariance.pose);
-      // publish
-      dummy_perception_object_pub_->publish(convertObjectMsgToDummyPerception(&object));
-      objects_.push_back(object);
-      break;
-    }
-    case npc_simulator::msg::Object::DELETE: {
-      for (size_t i = 0; i < objects_.size(); ++i) {
-        if (objects_.at(i).id.uuid == msg->id.uuid) {
-          // publish
-          objects_.at(i).action = npc_simulator::msg::Object::DELETE;
-          const auto dummy_perception_obj_msg = convertObjectMsgToDummyPerception(&objects_.at(i));
-          dummy_perception_object_pub_->publish(dummy_perception_obj_msg);
-          objects_.erase(objects_.begin() + i);
-          break;
-        }
-      }
-      break;
-    }
-    case npc_simulator::msg::Object::MODIFY: {
-      for (auto & obj : objects_) {
-        if (obj.id.uuid == msg->id.uuid) {
-          tf2::Transform tf_input2map;
-          tf2::Transform tf_input2object_origin;
-          tf2::Transform tf_map2object_origin;
-          try {
-            geometry_msgs::msg::TransformStamped ros_input2map;
-            ros_input2map = tf_buffer_.lookupTransform(
-              /*target*/ msg->header.frame_id, /*src*/ "map", msg->header.stamp,
-              rclcpp::Duration::from_seconds(0.5));
-            tf2::fromMsg(ros_input2map.transform, tf_input2map);
-          } catch (tf2::TransformException & ex) {
-            RCLCPP_WARN(logger_, "%s", ex.what());
+        for (const auto & each : objects_) {
+          if (each.id == msg->id) {
             return;
           }
-          tf2::fromMsg(msg->initial_state.pose_covariance.pose, tf_input2object_origin);
-          tf_map2object_origin = tf_input2map.inverse() * tf_input2object_origin;
-          obj = *msg;
-          obj.header.frame_id = "map";
-          tf2::toMsg(tf_map2object_origin, obj.initial_state.pose_covariance.pose);
-          // publish
-          const auto dummy_perception_obj_msg = convertObjectMsgToDummyPerception(&obj);
-          dummy_perception_object_pub_->publish(dummy_perception_obj_msg);
-          break;
         }
+
+        tf2::Transform tf_input2map;
+
+        try {
+          geometry_msgs::msg::TransformStamped ros_input2map = tf_buffer_.lookupTransform(
+            msg->header.frame_id, "map", msg->header.stamp, rclcpp::Duration::from_seconds(0.5));
+          tf2::fromMsg(ros_input2map.transform, tf_input2map);
+        } catch (tf2::TransformException & ex) {
+          RCLCPP_WARN(logger_, "%s", ex.what());
+          return;
+        }
+
+        tf2::Transform tf_input2object_origin;
+        tf2::fromMsg(msg->initial_state.pose_covariance.pose, tf_input2object_origin);
+
+        npc_simulator::msg::Object object = *msg;
+        object.header.frame_id = "map";
+
+        tf2::Transform tf_map2object_origin = tf_input2map.inverse() * tf_input2object_origin;
+        tf2::toMsg(tf_map2object_origin, object.initial_state.pose_covariance.pose);
+        // publish
+        dummy_perception_object_pub_->publish(convertObjectMsgToDummyPerception(&object));
+        objects_.push_back(object);
+        break;
       }
-      break;
-    }
+    case npc_simulator::msg::Object::DELETE: {
+        for (size_t i = 0; i < objects_.size(); ++i) {
+          if (objects_.at(i).id.uuid == msg->id.uuid) {
+            // publish
+            objects_.at(i).action = npc_simulator::msg::Object::DELETE;
+            const auto dummy_perception_obj_msg =
+              convertObjectMsgToDummyPerception(&objects_.at(i));
+            dummy_perception_object_pub_->publish(dummy_perception_obj_msg);
+            objects_.erase(objects_.begin() + i);
+            break;
+          }
+        }
+        break;
+      }
+    case npc_simulator::msg::Object::MODIFY: {
+        for (auto & obj : objects_) {
+          if (obj.id.uuid == msg->id.uuid) {
+            tf2::Transform tf_input2map;
+            tf2::Transform tf_input2object_origin;
+            tf2::Transform tf_map2object_origin;
+            try {
+              geometry_msgs::msg::TransformStamped ros_input2map;
+              ros_input2map = tf_buffer_.lookupTransform(
+                /*target*/ msg->header.frame_id, /*src*/ "map", msg->header.stamp,
+                rclcpp::Duration::from_seconds(0.5));
+              tf2::fromMsg(ros_input2map.transform, tf_input2map);
+            } catch (tf2::TransformException & ex) {
+              RCLCPP_WARN(logger_, "%s", ex.what());
+              return;
+            }
+            tf2::fromMsg(msg->initial_state.pose_covariance.pose, tf_input2object_origin);
+            tf_map2object_origin = tf_input2map.inverse() * tf_input2object_origin;
+            obj = *msg;
+            obj.header.frame_id = "map";
+            tf2::toMsg(tf_map2object_origin, obj.initial_state.pose_covariance.pose);
+            // publish
+            const auto dummy_perception_obj_msg = convertObjectMsgToDummyPerception(&obj);
+            dummy_perception_object_pub_->publish(dummy_perception_obj_msg);
+            break;
+          }
+        }
+        break;
+      }
     case npc_simulator::msg::Object::MODIFYTURNDIRECTION: {
-      for (auto & obj : objects_) {
-        if (obj.id.uuid == msg->id.uuid) {
-          obj.action = msg->action;
-          obj.lane_follow_mode.mode = msg->lane_follow_mode.mode;
-          // no publish
+        for (auto & obj : objects_) {
+          if (obj.id.uuid == msg->id.uuid) {
+            obj.action = msg->action;
+            obj.lane_follow_mode.mode = msg->lane_follow_mode.mode;
+            // no publish
+          }
         }
+        break;
       }
-      break;
-    }
     case npc_simulator::msg::Object::MODIFYTWIST: {
-      for (auto & obj : objects_) {
-        if (obj.id.uuid == msg->id.uuid) {
-          obj.action = msg->action;
-          obj.initial_state.twist_covariance = msg->initial_state.twist_covariance;
-          obj.target_vel = msg->initial_state.twist_covariance.twist.linear.x;
-          // no publish
+        for (auto & obj : objects_) {
+          if (obj.id.uuid == msg->id.uuid) {
+            obj.action = msg->action;
+            obj.initial_state.twist_covariance = msg->initial_state.twist_covariance;
+            obj.target_vel = msg->initial_state.twist_covariance.twist.linear.x;
+            // no publish
+          }
         }
+        break;
       }
-      break;
-    }
     case npc_simulator::msg::Object::MODIFYLANECHANGE: {
-      for (auto & obj : objects_) {
-        if (obj.id.uuid == msg->id.uuid) {
-          obj.action = msg->action;
-          obj.lane_change_dir.dir = msg->lane_change_dir.dir;
-          //no publish
+        for (auto & obj : objects_) {
+          if (obj.id.uuid == msg->id.uuid) {
+            obj.action = msg->action;
+            obj.lane_change_dir.dir = msg->lane_change_dir.dir;
+            // no publish
+          }
         }
+        break;
       }
-      break;
-    }
     case npc_simulator::msg::Object::MODIFYTARGETLANE: {
-      for (auto & obj : objects_) {
-        if (obj.id.uuid == msg->id.uuid) {
-          obj.action = msg->action;
-          obj.lane_change_id = msg->lane_change_id;
-          //no publish
+        for (auto & obj : objects_) {
+          if (obj.id.uuid == msg->id.uuid) {
+            obj.action = msg->action;
+            obj.lane_change_id = msg->lane_change_id;
+            // no publish
+          }
         }
+        break;
       }
-      break;
-    }
     case npc_simulator::msg::Object::MODIFYACCEL: {
-      for (auto & obj : objects_) {
-        if (obj.id.uuid == msg->id.uuid) {
-          obj.action = msg->action;
-          obj.accel = std::fabs(msg->accel);
-          obj.target_vel = msg->target_vel;
-          //no publish
+        for (auto & obj : objects_) {
+          if (obj.id.uuid == msg->id.uuid) {
+            obj.action = msg->action;
+            obj.accel = std::fabs(msg->accel);
+            obj.target_vel = msg->target_vel;
+            // no publish
+          }
         }
+        break;
       }
-      break;
-    }
     case npc_simulator::msg::Object::MODIFYROUTE: {
-      for (auto & obj : objects_) {
-        if (obj.id.uuid == msg->id.uuid) {
-          obj.target_route = msg->target_route;
-          //no publish
+        for (auto & obj : objects_) {
+          if (obj.id.uuid == msg->id.uuid) {
+            obj.target_route = msg->target_route;
+            // no publish
+          }
         }
+        break;
       }
-      break;
-    }
     case npc_simulator::msg::Object::MODIFYCONSIDERVEHICLE: {
-      for (auto & obj : objects_) {
-        if (obj.id.uuid == msg->id.uuid) {
-          obj.stop_by_vehicle = msg->stop_by_vehicle;
-          //no publish
+        for (auto & obj : objects_) {
+          if (obj.id.uuid == msg->id.uuid) {
+            obj.stop_by_vehicle = msg->stop_by_vehicle;
+            // no publish
+          }
         }
+        break;
       }
-      break;
-    }
     case npc_simulator::msg::Object::DELETEALL: {
-      objects_.clear();
-      // publish
-      dummy_perception_publisher::msg::Object dummy_perception_obj_msg;
-      dummy_perception_obj_msg.action = dummy_perception_publisher::msg::Object::DELETEALL;
-      dummy_perception_object_pub_->publish(dummy_perception_obj_msg);
-      break;
-    }
+        objects_.clear();
+        // publish
+        dummy_perception_publisher::msg::Object dummy_perception_obj_msg;
+        dummy_perception_obj_msg.action = dummy_perception_publisher::msg::Object::DELETEALL;
+        dummy_perception_object_pub_->publish(dummy_perception_obj_msg);
+        break;
+      }
   }
 }
 
@@ -1129,7 +1147,7 @@ dummy_perception_publisher::msg::Object NPCSimulator::convertObjectMsgToDummyPer
   } else {
     output_obj.action = dummy_perception_publisher::msg::Object::MODIFY;
   }
-  //generate dummy_perception object as static obstacle
+  // generate dummy_perception object as static obstacle
   output_obj.initial_state.twist_covariance.twist.linear.x = 0;
   output_obj.initial_state.twist_covariance.twist.linear.y = 0;
   output_obj.initial_state.twist_covariance.twist.linear.z = 0;
@@ -1138,9 +1156,8 @@ dummy_perception_publisher::msg::Object NPCSimulator::convertObjectMsgToDummyPer
   output_obj.initial_state.twist_covariance.twist.angular.z = 0;
 
   if (obj->action == npc_simulator::msg::Object::ADD) {
-    //from second time, obj.action must change to MODIFY
+    // from second time, obj.action must change to MODIFY
     obj->action = npc_simulator::msg::Object::MODIFY;
-    sleep(0.01);  //avoid missing msg
   }
   return output_obj;
 }
@@ -1153,16 +1170,16 @@ NPCSimulator::convertObjectMsgToAutowarePerception(
   output_msg.header.frame_id = "map";
   output_msg.header.stamp = clock_->now();
 
-  for (const auto obj : obj_vec) {
+  for (const auto & obj : obj_vec) {
     autoware_perception_msgs::msg::DynamicObject autoware_obj;
-    //convert obj type from npc_simulator_object to autoware_dynamic_object
+    // convert obj type from npc_simulator_object to autoware_dynamic_object
     autoware_obj.id = obj.id;
     autoware_obj.semantic = obj.semantic;
     autoware_obj.shape = obj.shape;
     autoware_obj.state.pose_covariance = obj.initial_state.pose_covariance;
     autoware_obj.state.twist_covariance = obj.initial_state.twist_covariance;
 
-    //position prediction for smooth visualization
+    // position prediction for smooth visualization
     if (prediction && engage_state_) {
       const double dt =
         (rclcpp::Time(output_msg.header.stamp) - rclcpp::Time(obj.header.stamp)).seconds();
@@ -1182,14 +1199,15 @@ NPCSimulator::convertObjectMsgToAutowarePerception(
   return output_msg;
 }
 
-rclcpp::TimerBase::SharedPtr NPCSimulator::initTimer(rclcpp::Node& node,
-  const rclcpp::Duration & duration, void (NPCSimulator::*ptr_to_member_fn)(void))
+rclcpp::TimerBase::SharedPtr NPCSimulator::initTimer(
+  rclcpp::Node & node,
+  const rclcpp::Duration & duration, void (NPCSimulator::* ptr_to_member_fn)(void))
 {
   auto timer_callback = std::bind(ptr_to_member_fn, this);
   rclcpp::TimerBase::SharedPtr timer =
     std::make_shared<rclcpp::GenericTimer<decltype(timer_callback)>>(
-      clock_, std::chrono::nanoseconds{duration.nanoseconds()},
-      std::move(timer_callback), node.get_node_base_interface()->get_context());
+    clock_, std::chrono::nanoseconds{duration.nanoseconds()},
+    std::move(timer_callback), node.get_node_base_interface()->get_context());
   node.get_node_timers_interface()->add_timer(timer, nullptr);
   return timer;
 }
