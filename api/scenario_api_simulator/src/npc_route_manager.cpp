@@ -22,7 +22,7 @@
 
 #include <functional>
 
-NPCRouteManager::NPCRouteManager(rclcpp::Node& node)
+NPCRouteManager::NPCRouteManager(rclcpp::Node & node)
 : logger_(node.get_logger().get_child("npcl_route_manager")),
   clock_(node.get_clock())
 {
