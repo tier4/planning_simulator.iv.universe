@@ -93,7 +93,7 @@ public:
   bool checkNPCFinishLaneChange(const std::string & name, bool & lane_change);
   bool checkNPCFinishVelocityChange(const std::string & name, bool & velocity_change);
   bool deleteNPC(const std::string & name);
-  std::vector < std::string > getNpcList();
+  std::vector<std::string> getNpcList();
 
   //NPC API (tools)
   bool shiftNPCPose(
@@ -106,30 +106,30 @@ public:
 private:
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
-  std::shared_ptr < NPCSimulator > npc_simulator_;
-  rclcpp::Publisher < npc_simulator::msg::Object > ::SharedPtr pub_object_info_;       //!< @brief topic pubscriber for npc
-  rclcpp::Publisher < std_msgs::msg::Bool > ::SharedPtr pub_simulator_engage_;  //!< @brief topic pubscriber for vehicle engage
-  rclcpp::Publisher < std_msgs::msg::Bool > ::SharedPtr pub_npc_engage_;        //!< @brief topic pubscriber for npc simulator engage
+  std::shared_ptr<NPCSimulator> npc_simulator_;
+  rclcpp::Publisher<npc_simulator::msg::Object>::SharedPtr pub_object_info_;           //!< @brief topic pubscriber for npc
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_simulator_engage_;      //!< @brief topic pubscriber for vehicle engage
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_npc_engage_;            //!< @brief topic pubscriber for npc simulator engage
   rclcpp::TimerBase::SharedPtr timer_control_;             //!< @brief timer for getting self-position
-  std::unordered_map < std::string, unique_identifier_msgs::msg::UUID > uuid_map_;
-  std::unordered_map < std::string, double > maxacc_map_;
-  std::unordered_map < std::string, double > minacc_map_;
-  std::shared_ptr < NPCRouteManager > npc_route_manager_;
+  std::unordered_map<std::string, unique_identifier_msgs::msg::UUID> uuid_map_;
+  std::unordered_map<std::string, double> maxacc_map_;
+  std::unordered_map<std::string, double> minacc_map_;
+  std::shared_ptr<NPCRouteManager> npc_route_manager_;
 
   void timerCallback();
   void updateNPC();
   npc_simulator::msg::Object getObjectMsg(
     uint32_t semantic_type, double confidence, uint8_t shape_type, double size_x, double size_y,
     double size_z);
-  std::unordered_map < std::string, npc_simulator::msg::Object > getNPCInfo();
+  std::unordered_map<std::string, npc_simulator::msg::Object> getNPCInfo();
   npc_simulator::msg::Object getObjectMsg(std::string npc_name, std::string frame_id = "map");
   bool checkValidNPC(const std::string & name);
-  bool changeNPCRoute(const std::string & name, const std::vector < int > route);
+  bool changeNPCRoute(const std::string & name, const std::vector<int> route);
   bool targetLaneChangeNPC(const std::string & name, const int target_lane_id);
   bool laneChangeNPC(const std::string & name, const uint8_t lane_change_dir);
   bool changeNPCBehavior(const std::string & name, const uint8_t behavior_mode);
-  bool inputNPCLaneFollowState(std::unordered_map < std::string, uint8_t > states);
-  bool inputNPCStopState(std::unordered_map < std::string, bool > states);
+  bool inputNPCLaneFollowState(std::unordered_map<std::string, uint8_t> states);
+  bool inputNPCStopState(std::unordered_map<std::string, bool> states);
 
   //parameter
   const double npc_stop_accel_ = 3.0;

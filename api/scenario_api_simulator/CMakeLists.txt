@@ -19,4 +19,9 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/npc_route_manager.cpp
   )
 
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
 ament_auto_package()

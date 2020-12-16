@@ -32,17 +32,17 @@
 
 namespace lanelet
 {
-  class Lanelet;
-  class LaneletMap;
-  using LaneletMapPtr = std::shared_ptr < LaneletMap >;
-  namespace routing
-  {
-    class RoutingGraph;
-  }
-  namespace traffic_rules
-  {
-    class TrafficRules;
-  }
+class Lanelet;
+class LaneletMap;
+using LaneletMapPtr = std::shared_ptr<LaneletMap>;
+namespace routing
+{
+class RoutingGraph;
+}
+namespace traffic_rules
+{
+class TrafficRules;
+}
 }  // namespace lanelet
 
 class NPCRouteManager
@@ -51,7 +51,7 @@ public:
   /**
    * @brief constructor
    */
-  NPCRouteManager(rclcpp::Node& node);
+  NPCRouteManager(rclcpp::Node & node);
 
   /**
    * @brief destructor
@@ -65,7 +65,7 @@ public:
    */
   bool planRoute(
     const std::string & name, const geometry_msgs::msg::Pose initial_pose,
-    const geometry_msgs::msg::Pose goal_pose, std::vector < int > * const route);
+    const geometry_msgs::msg::Pose goal_pose, std::vector<int> * const route);
 
   /**
    * @brief search route from initial_pose to goal_pose
@@ -84,14 +84,14 @@ public:
   /**
    * @brief decide npc lane follow state(go straight, turn left, turn light)
    */
-  std::unordered_map < std::string, uint8_t > updateNPCLaneFollowState(
-    std::unordered_map < std::string, npc_simulator::msg::Object > npc_infos);
+  std::unordered_map<std::string, uint8_t> updateNPCLaneFollowState(
+    std::unordered_map<std::string, npc_simulator::msg::Object> npc_infos);
 
   /**
    * @brief decide npc lane stop state
    */
-  std::unordered_map < std::string, bool > updateNPCStopState(
-    std::unordered_map < std::string, npc_simulator::msg::Object > npc_infos);
+  std::unordered_map<std::string, bool> updateNPCStopState(
+    std::unordered_map<std::string, npc_simulator::msg::Object> npc_infos);
 
   /**
    * @brief get npc goal position
@@ -101,18 +101,18 @@ public:
 private:
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
-  rclcpp::Subscription < autoware_lanelet2_msgs::msg::MapBin > ::SharedPtr sub_map_;  //!< @brief topic subscriber for map
+  rclcpp::Subscription<autoware_lanelet2_msgs::msg::MapBin>::SharedPtr sub_map_;      //!< @brief topic subscriber for map
 
   // lanelet
-  std::shared_ptr < lanelet::LaneletMap > lanelet_map_ptr_;
-  std::shared_ptr < lanelet::routing::RoutingGraph > routing_graph_ptr_;
-  std::shared_ptr < lanelet::traffic_rules::TrafficRules > traffic_rules_ptr_;
-  std::shared_ptr < lanelet::Lanelet > closest_lanelet_ptr_;
+  std::shared_ptr<lanelet::LaneletMap> lanelet_map_ptr_;
+  std::shared_ptr<lanelet::routing::RoutingGraph> routing_graph_ptr_;
+  std::shared_ptr<lanelet::traffic_rules::TrafficRules> traffic_rules_ptr_;
+  std::shared_ptr<lanelet::Lanelet> closest_lanelet_ptr_;
 
-  std::unordered_map < std::string, bool > npc_stop_state_;
-  std::unordered_map < std::string, geometry_msgs::msg::Pose > npc_goal_map_;
-  std::unordered_map < std::string, lanelet::ConstLanelets > npc_lane_map_;
-  std::unordered_map < std::string, std::vector < geometry_msgs::msg::Pose >> npc_checkpoints_map_;
+  std::unordered_map<std::string, bool> npc_stop_state_;
+  std::unordered_map<std::string, geometry_msgs::msg::Pose> npc_goal_map_;
+  std::unordered_map<std::string, lanelet::ConstLanelets> npc_lane_map_;
+  std::unordered_map<std::string, std::vector<geometry_msgs::msg::Pose>> npc_checkpoints_map_;
 
   void callbackMap(const autoware_lanelet2_msgs::msg::MapBin::ConstSharedPtr msg);
   bool getClosestLanelet(

@@ -23,6 +23,9 @@
   <build_depend>tf2</build_depend>
   <depend>unique_identifier_msgs</depend>
 
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_cmake_cppcheck</test_depend>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>

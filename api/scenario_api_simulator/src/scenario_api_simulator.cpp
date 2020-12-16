@@ -169,7 +169,7 @@ bool ScenarioAPISimulator::addNPC(
   object.action = npc_simulator::msg::Object::ADD;
   object.stop_by_vehicle = stop_by_vehicle;
 
-  for (npc_simulator::msg::Object result {}; not getNPC(name, result); sleep(0.1)) {
+  for (npc_simulator::msg::Object result {}; not getNPC(name, result);) {
     pub_object_info_->publish(object);
   }
 
@@ -251,9 +251,6 @@ bool ScenarioAPISimulator::sendNPCToGoalPoint(
   }
   changeNPCRoute(name, route);
 
-  if (wait_ready) {
-    sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
-  }
   return true;
 }
 
@@ -299,7 +296,6 @@ bool ScenarioAPISimulator::changeNPCVelocityWithoutAccel(
   object.initial_state.twist_covariance.twist.linear.x = velocity;
   object.target_vel = velocity;
   pub_object_info_->publish(object);
-  sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
   return true;
 }
 
@@ -328,8 +324,6 @@ bool ScenarioAPISimulator::changeNPCVelocityWithAccel(
   object.target_vel = velocity;
   object.accel = accel;
   pub_object_info_->publish(object);
-  sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
-
   return true;
 }
 
@@ -345,8 +339,6 @@ bool ScenarioAPISimulator::changeNPCConsiderVehicle(
   object.action = npc_simulator::msg::Object::MODIFYCONSIDERVEHICLE;
   object.stop_by_vehicle = consider_ego_vehicle;
   pub_object_info_->publish(object);
-  sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
-
   return true;
 }
 
@@ -366,7 +358,6 @@ bool ScenarioAPISimulator::changeNPCRoute(const std::string & name, const std::v
   }
 
   pub_object_info_->publish(object);
-  sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
   return true;
 }
 
@@ -381,8 +372,6 @@ bool ScenarioAPISimulator::targetLaneChangeNPC(const std::string & name, const i
   object.action = npc_simulator::msg::Object::MODIFYTARGETLANE;
   object.lane_change_id = target_lane_id;
   pub_object_info_->publish(object);
-  sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
-
   return true;
 }
 
@@ -397,8 +386,6 @@ bool ScenarioAPISimulator::laneChangeNPC(const std::string & name, const uint8_t
   object.action = npc_simulator::msg::Object::MODIFYLANECHANGE;
   object.lane_change_dir.dir = lane_change_dir;
   pub_object_info_->publish(object);
-  sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
-
   return true;
 }
 
@@ -433,8 +420,6 @@ bool ScenarioAPISimulator::changeNPCBehavior(const std::string & name, const uin
   object.action = npc_simulator::msg::Object::MODIFYTURNDIRECTION;
   object.lane_follow_mode.mode = behavior_mode;
   pub_object_info_->publish(object);
-  sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
-
   return true;
 }
 
@@ -513,7 +498,6 @@ bool ScenarioAPISimulator::deleteNPC(const std::string & name)
   // delete uuid map
   uuid_map_.erase(name);
 
-  sleep(0.01);  // TODO remove this(sleep for avoiding message loss)
   return true;
 }
 
