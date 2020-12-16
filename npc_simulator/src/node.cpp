@@ -897,7 +897,7 @@ double NPCSimulator::getNearestZPos(const geometry_msgs::msg::Pose & pose)
   // search nearest centerline point from current_lanelet
 
   double min_dist = std::numeric_limits<double>::max();
-  size_t nearest_idx = 0; // This value won't be used since centerline isn't empty
+  size_t nearest_idx = 0;  // This value won't be used since centerline isn't empty
   size_t second_nearest_idx;
   for (size_t i = 0; i < centerline.size() - 1; i++) {
     const double dist = calcDist2D(pose.position, toMsg(centerline[i]));
