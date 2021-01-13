@@ -531,16 +531,20 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
 
     srv.request.object_id = uuid_map_[name];
 
-    if (not client_.call(srv) or not srv.response.success)
+    for (std::size_t trials = 0; trials < 10; ++trials)
     {
-      ROS_WARN_STREAM("Failed to get NPC");
-      return false;
+      if (not client_.call(srv) or not srv.response.success)
+      {
+        ROS_WARN_STREAM("Failed to get NPC (try " << trials << ")");
+      }
+      else
+      {
+        obj = srv.response.object;
+        return true;
+      }
     }
-    else
-    {
-      obj = srv.response.object;
-      return true;
-    }
+
+    return false;
   }
 }
 
