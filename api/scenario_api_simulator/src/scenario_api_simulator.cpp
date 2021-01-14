@@ -550,7 +550,6 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
       if (not client_.call(srv) or not srv.response.success)
       {
         ROS_WARN_STREAM("Failed to get NPC object (try " << ++trials << " of " << max_trials << ").");
-        ros::Rate(10).sleep();
       }
       else
       {
