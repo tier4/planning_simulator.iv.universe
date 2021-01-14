@@ -89,72 +89,82 @@ bool ScenarioAPISimulator::addNPC(
   const double velocity, const bool stop_by_vehicle, const std::string & frame_type)
 {
   // uuid map check
-  if (uuid_map_.find(name) != uuid_map_.end()) {
-    ROS_WARN_STREAM("NPC name :" << name << " already exsists");
+  if (uuid_map_.find(name) != uuid_map_.end())
+  {
+    ROS_WARN_STREAM("NPC name: " << name << " already exsists");
     return true;
   }
-  else {
+  else
+  {
     // generate uuid_map
     uuid_map_[name] = unique_id::toMsg(boost::uuids::random_generator()());
+
+    static const std::unordered_map<std::string, npc_simulator::Object> objects
+    {
+      #define MAKE_OBJECT(TYPE, ...) \
+        getObjectMsg( \
+          autoware_perception_msgs::Semantic::TYPE, 1.0, \
+          autoware_perception_msgs::Shape::BOUNDING_BOX, __VA_ARGS__)
+
+      { "car",        MAKE_OBJECT(CAR,        4.0, 1.8, 2.5) },
+      { "pedestrian", MAKE_OBJECT(PEDESTRIAN, 0.8, 0.8, 2.0) },
+      { "bicycle",    MAKE_OBJECT(BICYCLE,    2.0, 0.8, 2.5) },
+      { "motorbike",  MAKE_OBJECT(MOTORBIKE,  2.5, 1.5, 2.5) },
+      { "bus",        MAKE_OBJECT(BUS,       10.0, 2.5, 3.5) },
+      { "truck",      MAKE_OBJECT(TRUCK,      7.5, 2.5, 3.0) },
+      { "unknown",    MAKE_OBJECT(UNKNOWN,    1.0, 1.0, 1.0) }
+
+      #undef MAKE_OBJECT
+    };
+
+    npc_simulator::Object object;
+
+    try
+    {
+      object = objects.at(npc_type);
+      object.offset_rate_from_center = (npc_type == "bicycle" ? 0.95 : 0); // Bicycle runs on left edge of lane
+    }
+    catch (std::out_of_range&)
+    {
+      ROS_WARN("NPC type is invalid. Publish NPC object as unknown type");
+      object = objects.at("unknown");
+    }
+
+    // Get pose with frame_type
+    geometry_msgs::Pose original_pose;
+    original_pose.position = pose.position;
+    original_pose.orientation = quatFromYaw(yawFromQuat(pose.orientation)); // ignore roll/pitch information
+
+    dummy_perception_publisher::InitialState init_state;
+
+    if (!shiftNPCPose(original_pose, frame_type, object, &init_state.pose_covariance.pose))
+    {
+      return false;
+    }
+    else
+    {
+      object.header.stamp = ros::Time::now();
+      object.header.frame_id = "map";
+      object.initial_state = init_state;
+      object.initial_state.twist_covariance.twist.linear.x = velocity;
+      object.target_vel = velocity;
+      object.accel = npc_default_accel_;
+      object.id = uuid_map_[name];
+      object.action = npc_simulator::Object::ADD;
+      object.stop_by_vehicle = stop_by_vehicle;
+
+      npc_simulator::Object result {};
+
+      do
+      {
+        pub_object_info_.publish(object);
+        sleep(0.1);
+      }
+      while (not getNPC(name, result));
+
+      return true;
+    }
   }
-
-  static const std::unordered_map<std::string, npc_simulator::Object> objects
-  {
-    #define MAKE_OBJECT(TYPE, ...) \
-      getObjectMsg( \
-        autoware_perception_msgs::Semantic::TYPE, 1.0, \
-        autoware_perception_msgs::Shape::BOUNDING_BOX, __VA_ARGS__)
-
-    { "car",        MAKE_OBJECT(CAR,        4.0, 1.8, 2.5) },
-    { "pedestrian", MAKE_OBJECT(PEDESTRIAN, 0.8, 0.8, 2.0) },
-    { "bicycle",    MAKE_OBJECT(BICYCLE,    2.0, 0.8, 2.5) },
-    { "motorbike",  MAKE_OBJECT(MOTORBIKE,  2.5, 1.5, 2.5) },
-    { "bus",        MAKE_OBJECT(BUS,       10.0, 2.5, 3.5) },
-    { "truck",      MAKE_OBJECT(TRUCK,      7.5, 2.5, 3.0) },
-    { "unknown",    MAKE_OBJECT(UNKNOWN,    1.0, 1.0, 1.0) }
-
-    #undef MAKE_OBJECT
-  };
-
-  npc_simulator::Object object;
-
-  try
-  {
-    object = objects.at(npc_type);
-    object.offset_rate_from_center = (npc_type == "bicycle" ? 0.95 : 0); // Bicycle runs on left edge of lane
-  }
-  catch (std::out_of_range&)
-  {
-    ROS_WARN("NPC type is invalid. Publish NPC object as unknown type");
-    object = objects.at("unknown");
-  }
-
-  //get pose with frame_type
-  geometry_msgs::Pose original_pose;
-  original_pose.position = pose.position;
-  original_pose.orientation = quatFromYaw(yawFromQuat(pose.orientation)); // ignore roll/pitch information
-
-  dummy_perception_publisher::InitialState init_state;
-  if (!shiftNPCPose(original_pose, frame_type, object, &init_state.pose_covariance.pose)) {
-    return false;
-  }
-
-  object.header.stamp = ros::Time::now();
-  object.header.frame_id = "map";
-  object.initial_state = init_state;
-  object.initial_state.twist_covariance.twist.linear.x = velocity;
-  object.target_vel = velocity;
-  object.accel = npc_default_accel_;
-  object.id = uuid_map_[name];
-  object.action = npc_simulator::Object::ADD;
-  object.stop_by_vehicle = stop_by_vehicle;
-
-  for (npc_simulator::Object result {}; not getNPC(name, result); sleep(0.1))
-  {
-    pub_object_info_.publish(object);
-  }
-
-  return true;  // TODO check successs
 }
 
 bool ScenarioAPISimulator::checkValidNPC(const std::string & name)
@@ -521,8 +531,12 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
 {
   if (!checkValidNPC(name))
   {
-    ROS_WARN_STREAM("Invalid NPC name '" << name << "' requested.");
-    return false;
+    // ROS_WARN_STREAM("Invalid NPC name '" << name << "' requested.");
+    // return false;
+
+    std::stringstream ss;
+    ss << "Invalid NPC name '" << name << "' requested.";
+    throw std::runtime_error(ss.str());
   }
   else
   {
@@ -532,15 +546,13 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
 
     constexpr std::size_t max_trials = 10;
 
-    static std::size_t call_counts = 0, fail_counts = 0;
+    std::size_t trials = 0;
 
-    ++call_counts;
-
-    for (std::size_t trials = 0; trials < max_trials; ++trials)
+    for (double frequency = 60.0; trials < max_trials; ros::Rate(frequency /= 2.0).sleep())
     {
       if (not client_.call(srv) or not srv.response.success)
       {
-        ROS_WARN_STREAM("Failed to get NPC object (try " << trials << " of " << max_trials << ").");
+        ROS_WARN_STREAM("Failed to get NPC object (try " << ++trials << " of " << max_trials << ").");
         ros::Rate(10).sleep();
       }
       else
@@ -550,8 +562,7 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
       }
     }
 
-    ROS_ERROR_STREAM("Failed to get NPC object (tried " << max_trials << " times but not respond). "
-                     "The same error has occurred " << ++fail_counts << " out of " << call_counts << " invocations of the getNPC function, including this call.");
+    ROS_ERROR_STREAM("Failed to get NPC object (tried " << max_trials << " times but not respond).");
     return false;
   }
 }
