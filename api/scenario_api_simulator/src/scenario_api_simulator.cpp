@@ -531,25 +531,22 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
 {
   if (!checkValidNPC(name))
   {
-    // ROS_WARN_STREAM("Invalid NPC name '" << name << "' requested.");
-    // return false;
-
     std::stringstream ss;
     ss << "Invalid NPC name '" << name << "' requested.";
     throw std::runtime_error(ss.str());
   }
   else
   {
-    npc_simulator::GetObject srv;
-
-    srv.request.object_id = uuid_map_[name];
-
     constexpr std::size_t max_trials = 10;
 
     std::size_t trials = 0;
 
     for (double frequency = 60.0; trials < max_trials; ros::Rate(frequency /= 2.0).sleep())
     {
+      npc_simulator::GetObject srv;
+
+      srv.request.object_id = uuid_map_[name];
+
       if (not client_.call(srv) or not srv.response.success)
       {
         ROS_WARN_STREAM("Failed to get NPC object (try " << ++trials << " of " << max_trials << ").");
@@ -562,7 +559,7 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
       }
     }
 
-    ROS_ERROR_STREAM("Failed to get NPC object (tried " << max_trials << " times but not respond).");
+    ROS_ERROR_STREAM("Failed to get NPC object (tried " << trials << " times but not respond).");
     return false;
   }
 }
