@@ -22,9 +22,8 @@ ScenarioAPISimulator::ScenarioAPISimulator() : nh_(""), pnh_("~")
   npc_route_manager_ = std::make_shared<NPCRouteManager>();
 
   /* register service client*/
-  client_ = nh_.serviceClient<npc_simulator::GetObject>(
-    "/simulation/npc_simulator/"
-    "get_object");
+  client_ = nh_.serviceClient<npc_simulator::GetObject>("/simulation/npc_simulator/get_object");
+  client_.waitForExistence();
 
   /* register publisher */
   pub_object_info_ = pnh_.advertise<npc_simulator::Object>("output/object_info", 1, true);
@@ -531,11 +530,18 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
 
     srv.request.object_id = uuid_map_[name];
 
-    for (std::size_t trials = 0; trials < 10; ++trials)
+    constexpr std::size_t max_trials = 10;
+
+    static std::size_t call_counts = 0, fail_counts = 0;
+
+    ++call_counts;
+
+    for (std::size_t trials = 0; trials < max_trials; ++trials)
     {
       if (not client_.call(srv) or not srv.response.success)
       {
-        ROS_WARN_STREAM("Failed to get NPC (try " << trials << ")");
+        ROS_WARN_STREAM("Failed to get NPC object (try " << trials << " of " << max_trials << ").");
+        ros::Rate(10).sleep();
       }
       else
       {
@@ -544,6 +550,8 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::Objec
       }
     }
 
+    ROS_ERROR_STREAM("Failed to get NPC object (tried " << max_trials << " times but not respond). "
+                     "The same error has occurred " << ++fail_counts << " out of " << call_counts << " invocations of the getNPC function, including this call.");
     return false;
   }
 }
