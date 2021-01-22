@@ -27,7 +27,7 @@
 
 ScenarioAPISimulator::ScenarioAPISimulator(rclcpp::Node::SharedPtr node)
 : logger_(node->get_logger().get_child("scenario_api_simulator")),
-  clock_(node->get_clock())
+  clock_(node->get_clock()), node_(node)
 {
   /* initializer*/
   npc_route_manager_ = std::make_shared<NPCRouteManager>(*node);
@@ -136,7 +136,7 @@ bool ScenarioAPISimulator::addNPC(
     {"truck", MAKE_OBJECT(TRUCK, 7.5, 2.5, 3.0)},
     {"unknown", MAKE_OBJECT(UNKNOWN, 1.0, 1.0, 1.0)}
 
-    #undef MAKE_OBJECT
+#undef MAKE_OBJECT
   };
 
   npc_simulator::msg::Object object;
@@ -169,8 +169,9 @@ bool ScenarioAPISimulator::addNPC(
   object.action = npc_simulator::msg::Object::ADD;
   object.stop_by_vehicle = stop_by_vehicle;
 
-  for (npc_simulator::msg::Object result {}; not getNPC(name, result);) {
+  for (npc_simulator::msg::Object result{}; not getNPC(name, result); sleep(0.1)) {
     pub_object_info_->publish(object);
+    rclcpp::spin_some(node_);    // sleep(1.0);
   }
 
   return true;  // TODO check successs
@@ -534,7 +535,7 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::msg::
       obj = res->object;
       return true;
     } else {
-      RCLCPP_WARN_STREAM(logger_, "Failed to get NPC");
+      RCLCPP_WARN_STREAM_ONCE(logger_, "Failed to get NPC");
       return false;
     }
   }
