@@ -27,7 +27,7 @@ NPCRouteManager::NPCRouteManager(rclcpp::Node & node)
   clock_(node.get_clock())
 {
   sub_map_ = node.create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
-    "input/vectormap", 1, std::bind(
+    "/map/vector_map", rclcpp::QoS{1}.transient_local(), std::bind(
       &NPCRouteManager::callbackMap, this,
       std::placeholders::_1));
 }
