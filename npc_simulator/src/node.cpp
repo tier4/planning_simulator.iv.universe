@@ -93,9 +93,9 @@ NPCSimulator::NPCSimulator(rclcpp::Node & node)
   engage_sub_ = node.create_subscription<std_msgs::msg::Bool>(
     "input/engage", large_queue_size, std::bind(&NPCSimulator::engageCallback, this, _1));
   object_sub_ = node.create_subscription<npc_simulator::msg::Object>(
-    "input/object", large_queue_size, std::bind(&NPCSimulator::objectCallback, this, _1));
+    "/simulation/npc_simulator/object_info", large_queue_size, std::bind(&NPCSimulator::objectCallback, this, _1));
   map_sub_ = node.create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
-    "input/vector_map", single_element_in_queue,
+    "/map/vector_map", single_element_in_queue,
     std::bind(&NPCSimulator::mapCallback, this, _1));
   pose_sub_ = node.create_subscription<geometry_msgs::msg::PoseStamped>(
     "input/ego_vehicle_pose", single_element_in_queue,
