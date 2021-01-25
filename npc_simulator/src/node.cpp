@@ -95,7 +95,7 @@ NPCSimulator::NPCSimulator(rclcpp::Node & node)
   object_sub_ = node.create_subscription<npc_simulator::msg::Object>(
     "/simulation/npc_simulator/object_info", large_queue_size, std::bind(&NPCSimulator::objectCallback, this, _1));
   map_sub_ = node.create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
-    "/map/vector_map", single_element_in_queue,
+    "/map/vector_map", rclcpp::QoS(single_element_in_queue).transient_local(),
     std::bind(&NPCSimulator::mapCallback, this, _1));
   pose_sub_ = node.create_subscription<geometry_msgs::msg::PoseStamped>(
     "input/ego_vehicle_pose", single_element_in_queue,
@@ -143,6 +143,9 @@ void NPCSimulator::mainTimerCallback()
     RCLCPP_WARN(logger_, "%s", ex.what());
     return;
   }
+
+  if(lanelet_map_ptr_ == nullptr)
+    return;
 
   // update npc information
   for (auto & obj : objects_) {
