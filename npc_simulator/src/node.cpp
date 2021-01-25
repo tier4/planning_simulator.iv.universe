@@ -144,8 +144,10 @@ void NPCSimulator::mainTimerCallback()
     return;
   }
 
-  if(lanelet_map_ptr_ == nullptr)
+  if(lanelet_map_ptr_ == nullptr){
+    RCLCPP_WARN_STREAM(logger_, "Has not subscribed to map; skip timer callback." );
     return;
+  }
 
   // update npc information
   for (auto & obj : objects_) {
