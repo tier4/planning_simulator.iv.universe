@@ -106,6 +106,7 @@ public:
 private:
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
+  rclcpp::Node::SharedPtr node_;
   std::shared_ptr<NPCSimulator> npc_simulator_;
   rclcpp::Publisher<npc_simulator::msg::Object>::SharedPtr pub_object_info_;           //!< @brief topic pubscriber for npc
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_simulator_engage_;      //!< @brief topic pubscriber for vehicle engage
