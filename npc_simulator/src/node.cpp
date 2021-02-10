@@ -196,7 +196,7 @@ void NPCSimulator::mainTimerCallback()
 
 void NPCSimulator::pubInfoTimerCallback()
 {
-  //publish npc info for visualization
+  // publish npc info for visualization
   const auto autoware_perception_msg = convertObjectMsgToAutowarePerception(objects_, true);
   debug_object_pub_->publish(autoware_perception_msg);
 }
@@ -276,7 +276,7 @@ bool NPCSimulator::checkValidLaneChange(
   for (const auto & next_to_target_lane : next_to_target_lanes) {
     {
       const auto lanetag = next_to_target_lane.attributeOr("turn_direction", "else");
-      if (lanetag == std::string("right") or lanetag == std::string("left")) {
+      if (lanetag == std::string("right") || lanetag == std::string("left")) {
         break;
       }
     }
@@ -285,7 +285,7 @@ bool NPCSimulator::checkValidLaneChange(
     for (const auto & two_next_to_target_lane : two_next_to_target_lanes) {
       {
         const auto lanetag = two_next_to_target_lane.attributeOr("turn_direction", "else");
-        if (lanetag == std::string("right") or lanetag == std::string("left")) {
+        if (lanetag == std::string("right") || lanetag == std::string("left")) {
           continue;
         }
       }
@@ -584,10 +584,10 @@ int NPCSimulator::getCurrentLaneletID(
   bool is_in_besides_lane = false;
   double min_dist = max_dist;
 
-  //when "with_target_lane" option is false, search current lanelet from entire lane.
+  // when "with_target_lane" option is false, search current lanelet from entire lane.
   // create lanelet list
   std::vector<std::pair<int, bool>> lane_list;  // lane_id, is_besides_lane
-  //append lane in route
+  // append lane in route
   for (const auto & lane_id : obj_route.data) {
     const bool is_besides_lane = false;
     const auto lane_pair = std::make_pair(static_cast<int>(lane_id), is_besides_lane);
@@ -616,7 +616,7 @@ int NPCSimulator::getCurrentLaneletID(
     if (with_target_lane) {
       bool is_lane_in_route = false;
       for (const auto & lane_pair : lane_list) {
-        //check lanelet is involved in target lanes or not
+        // check lanelet is involved in target lanes or not
         for (const auto & target_lane_id : obj_route.data) {
           if (lane_pair.first == near_lanelet.second.id()) {
             is_lane_in_route = true;
@@ -637,7 +637,7 @@ int NPCSimulator::getCurrentLaneletID(
     double current_dist = near_lanelet.first +
       addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_) +
       addCostByBesidesLane(is_in_besides_lane);
-    if (current_dist < max_dist && delta_yaw < max_delta_yaw and current_dist < min_dist) {
+    if (current_dist < max_dist && delta_yaw < max_delta_yaw && current_dist < min_dist) {
       min_dist = current_dist;
       target_closest_lanelet = near_lanelet.second;
       is_found_target_closest_lanelet = true;
@@ -697,7 +697,7 @@ double NPCSimulator::getFootOfPerpendicularLineLength(
   const double p_x = pose.position.x;
   const double p_y = pose.position.y;
 
-  //calc length of foot of perpendicular line
+  // calc length of foot of perpendicular line
   double pl_length = std::fabs(a * p_x + b * p_y + c) / std::sqrt(a * a + b * b);
   return pl_length;
 }
@@ -961,7 +961,7 @@ double NPCSimulator::getNearestZPos(const geometry_msgs::msg::Pose & pose)
     lanelet_map_ptr_->laneletLayer, search_point, 1);  // distance, lanelet
 
   if (nearest_lanelets.empty()) {
-    //no nearest_lanelets
+    // no nearest_lanelets
     return 0.0;
   }
 
@@ -1237,9 +1237,9 @@ dummy_perception_publisher::msg::Object NPCSimulator::convertObjectMsgToDummyPer
   output_obj.initial_state.twist_covariance.twist.angular.z = 0;
 
   if (obj->action == npc_simulator::msg::Object::ADD) {
-    //from second time, obj.action must change to MODIFY
+    // from second time, obj.action must change to MODIFY
     obj->action = npc_simulator::msg::Object::MODIFY;
-    usleep(10'000);  //avoid missing msg
+    usleep(10'000);  // avoid missing msg
   }
   return output_obj;
 }
