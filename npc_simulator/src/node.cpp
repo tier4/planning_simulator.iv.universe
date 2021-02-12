@@ -201,7 +201,7 @@ void NPCSimulator::mainTimerCallback()
 
 void NPCSimulator::pubInfoTimerCallback()
 {
-  // publish npc info for visulaization
+  // publish npc info for visualization
   const auto autoware_perception_msg = convertObjectMsgToAutowarePerception(objects_, true);
   debug_object_pub_->publish(autoware_perception_msg);
 }
@@ -240,9 +240,9 @@ void NPCSimulator::inputImuInfo(
 {
   const double current_vel = obj->initial_state.twist_covariance.twist.linear.x;
   const double current_yaw = tf2::getYaw(obj->initial_state.pose_covariance.pose.orientation);
-  const double current_accelration = (current_vel - prev_vel) / delta_time;
+  const double current_acceleration = (current_vel - prev_vel) / delta_time;
   const double current_yaw_rate = (current_yaw - prev_yaw) / delta_time;
-  obj->imu.linear_acceleration.x = current_accelration;
+  obj->imu.linear_acceleration.x = current_acceleration;
   obj->imu.angular_velocity.z = current_yaw_rate;
 }
 
@@ -266,11 +266,53 @@ bool NPCSimulator::checkValidLaneChange(
     result_lane_id = lane_change_id;
     return true;
   }
-  for (auto beside_lane : beside_lanes) {
+  for (const auto & beside_lane : beside_lanes) {
     if (beside_lane.id() == lane_change_id) {
       // use lane change id
       result_lane_id = lane_change_id;
       return true;
+    }
+  }
+
+  // searching next lane of target lane of lane-change
+  std::vector<int> lane_id_list;
+  const auto target_lane = lanelet_map_ptr_->laneletLayer.get(lane_change_id);
+  const auto next_to_target_lanes = routing_graph_ptr_->following(target_lane);
+  for (const auto & next_to_target_lane : next_to_target_lanes) {
+    {
+      const auto lanetag = next_to_target_lane.attributeOr("turn_direction", "else");
+      if (lanetag == std::string("right") || lanetag == std::string("left")) {
+        break;
+      }
+    }
+    lane_id_list.emplace_back(next_to_target_lane.id());
+    const auto two_next_to_target_lanes = routing_graph_ptr_->following(next_to_target_lane);
+    for (const auto & two_next_to_target_lane : two_next_to_target_lanes) {
+      {
+        const auto lanetag = two_next_to_target_lane.attributeOr("turn_direction", "else");
+        if (lanetag == std::string("right") || lanetag == std::string("left")) {
+          continue;
+        }
+      }
+      lane_id_list.emplace_back(two_next_to_target_lane.id());
+    }
+  }
+
+  for (const auto target_lane_id : lane_id_list) {
+    if (current_lane.id() == target_lane_id) {
+      // use next lane to lane change id
+      result_lane_id = target_lane_id;
+      return true;
+    }
+  }
+
+  for (const auto target_lane_id : lane_id_list) {
+    for (const auto & beside_lane : beside_lanes) {
+      if (beside_lane.id() == target_lane_id) {
+        // use next lane to lane change id
+        result_lane_id = target_lane_id;
+        return true;
+      }
     }
   }
   // wait lane change or finish lane change
@@ -391,7 +433,7 @@ int NPCSimulator::DecideLaneIdWithLaneChangeMode(
     }
   }
 
-  // check existance of lane with target id
+  // check existence of lane with target id
   if (!lanelet_map_ptr_->laneletLayer.exists(lane_id)) {
     RCLCPP_WARN_STREAM(logger_, "target lane:" << current_lane_id << "does not exist.");
     // return nearest lane
@@ -495,7 +537,7 @@ void NPCSimulator::updateVelocity(npc_simulator::msg::Object * obj, double dt)
 }
 
 double NPCSimulator::addCostByLaneTag(
-  const int lane_follow_dir, const std::string lanetag, const double base_cost)
+  const int lane_follow_dir, const std::string & lanetag, const double base_cost)
 {
   double cost = 0;
   // introduce cost
@@ -520,6 +562,11 @@ double NPCSimulator::addCostByLaneTag(
   return cost;
 }
 
+double NPCSimulator::addCostByBesidesLane(const bool is_in_besides_lane, const double base_cost)
+{
+  return is_in_besides_lane ? base_cost : 0.0;
+}
+
 int NPCSimulator::getCurrentLaneletID(
   const npc_simulator::msg::Object & obj, const bool with_target_lane, const double max_dist,
   const double max_delta_yaw)
@@ -539,31 +586,65 @@ int NPCSimulator::getCurrentLaneletID(
     lanelet_map_ptr_->laneletLayer, search_point, 20);  // distance, lanelet
   lanelet::Lanelet target_closest_lanelet;
   bool is_found_target_closest_lanelet = false;
+  bool is_in_besides_lane = false;
   double min_dist = max_dist;
-  for (const auto & lanelet : nearest_lanelets) {
-    // check lenalet is involved in routes or not
-    bool is_lane_in_route = false;
-    for (const auto & target_lane_id : obj_route.data) {
-      if (lanelet.second.id() == target_lane_id) {
-        is_lane_in_route = true;
+
+  // when "with_target_lane" option is false, search current lanelet from entire lane.
+  // create lanelet list
+  std::vector<std::pair<int, bool>> lane_list;  // lane_id, is_besides_lane
+  // append lane in route
+  for (const auto & lane_id : obj_route.data) {
+    const bool is_besides_lane = false;
+    const auto lane_pair = std::make_pair(static_cast<int>(lane_id), is_besides_lane);
+    lane_list.emplace_back(lane_pair);
+  }
+
+  // append beside lane of lane-in-route
+  for (const auto & lane_id : obj_route.data) {
+    const auto lane_in_route = lanelet_map_ptr_->laneletLayer.get(lane_id);
+    auto besides_lanelets = routing_graph_ptr_->besides(lane_in_route);
+    for (const auto & beside_lane : besides_lanelets) {
+      if (
+        std::find(
+          obj_route.data.begin(), obj_route.data.end(), static_cast<int>(beside_lane.id())) !=
+        obj_route.data.end())
+      {
+        continue;
+      }
+      const bool is_besides_lane = true;
+      const auto lane_pair = std::make_pair(static_cast<int>(beside_lane.id()), is_besides_lane);
+      lane_list.emplace_back(lane_pair);
+    }
+  }
+
+  for (const auto & near_lanelet : nearest_lanelets) {
+    if (with_target_lane) {
+      bool is_lane_in_route = false;
+      for (const auto & lane_pair : lane_list) {
+        // check lanelet is involved in target lanes or not
+        for (const auto & target_lane_id : obj_route.data) {
+          if (lane_pair.first == near_lanelet.second.id()) {
+            is_lane_in_route = true;
+            is_in_besides_lane = lane_pair.second;
+          }
+        }
+      }
+
+      if (!is_lane_in_route) {
+        continue;
       }
     }
 
-    if (!is_lane_in_route && with_target_lane) {
-      // when "with_target_lane" option is false, search current lanelet in entire lane.
-      continue;
-    }
-
     double current_yaw = tf2::getYaw(obj_pose.orientation);
-    double lane_yaw = lanelet::utils::getLaneletAngle(lanelet.second, obj_pose.position);
+    double lane_yaw = lanelet::utils::getLaneletAngle(near_lanelet.second, obj_pose.position);
     double delta_yaw = std::abs(normalizeRadian(current_yaw - lane_yaw));
-    auto lanetag = lanelet.second.attributeOr("turn_direction", "else");
-    double current_dist =
-      lanelet.first + addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_);
-
+    auto lanetag = near_lanelet.second.attributeOr("turn_direction", "else");
+    double current_dist = near_lanelet.first +
+      addCostByLaneTag(lane_follow_dir, lanetag, base_cost_by_lane_tag_) +
+      addCostByBesidesLane(is_in_besides_lane);
     if (current_dist < max_dist && delta_yaw < max_delta_yaw && current_dist < min_dist) {
       min_dist = current_dist;
-      target_closest_lanelet = lanelet.second;
+      target_closest_lanelet = near_lanelet.second;
       is_found_target_closest_lanelet = true;
     }
   }
@@ -621,7 +702,7 @@ double NPCSimulator::getFootOfPerpendicularLineLength(
   const double p_x = pose.position.x;
   const double p_y = pose.position.y;
 
-  // calc length of foot of perperndicular line
+  // calc length of foot of perpendicular line
   double pl_length = std::fabs(a * p_x + b * p_y + c) / std::sqrt(a * a + b * b);
   return pl_length;
 }
@@ -755,7 +836,7 @@ bool NPCSimulator::calcCollisionDistance(
     std::fabs(std::cos(rel_yaw)) * vehicle_width_ + std::fabs(std::sin(rel_yaw)) * vehicle_length_;
   if (
     std::fabs(relative_pose.position.y) >
-    (obj.shape.dimensions.y + rel_vehicle_width) / 2.0 + collsion_width_margin_)
+    (obj.shape.dimensions.y + rel_vehicle_width) / 2.0 + collision_width_margin_)
   {
     // ego vehicle does not exists in front of npc
     return false;
@@ -884,7 +965,7 @@ double NPCSimulator::getNearestZPos(const geometry_msgs::msg::Pose & pose)
   const auto nearest_lanelets = lanelet::geometry::findNearest(
     lanelet_map_ptr_->laneletLayer, search_point, 1);  // distance, lanelet
 
-  if (nearest_lanelets.size() == 0) {
+  if (nearest_lanelets.empty()) {
     // no nearest_lanelets
     return 0.0;
   }
@@ -1163,6 +1244,7 @@ dummy_perception_publisher::msg::Object NPCSimulator::convertObjectMsgToDummyPer
   if (obj->action == npc_simulator::msg::Object::ADD) {
     // from second time, obj.action must change to MODIFY
     obj->action = npc_simulator::msg::Object::MODIFY;
+    usleep(10'000);  // avoid missing msg
   }
   return output_obj;
 }
