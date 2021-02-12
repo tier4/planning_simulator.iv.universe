@@ -1046,31 +1046,31 @@ void NPCSimulator::objectCallback(const npc_simulator::msg::Object::ConstSharedP
           if (each.id == msg->id) {
             return;
           }
-
-          tf2::Transform tf_input2map;
-
-          try {
-            geometry_msgs::msg::TransformStamped ros_input2map = tf_buffer_.lookupTransform(
-              msg->header.frame_id, "map", msg->header.stamp, rclcpp::Duration::from_seconds(0.5));
-            tf2::fromMsg(ros_input2map.transform, tf_input2map);
-          } catch (tf2::TransformException & ex) {
-            RCLCPP_WARN(logger_, "%s", ex.what());
-            return;
-          }
-
-          tf2::Transform tf_input2object_origin;
-          tf2::fromMsg(msg->initial_state.pose_covariance.pose, tf_input2object_origin);
-
-          npc_simulator::msg::Object object = *msg;
-          object.header.frame_id = "map";
-
-          tf2::Transform tf_map2object_origin = tf_input2map.inverse() * tf_input2object_origin;
-          tf2::toMsg(tf_map2object_origin, object.initial_state.pose_covariance.pose);
-          // publish
-          dummy_perception_object_pub_->publish(convertObjectMsgToDummyPerception(&object));
-          objects_.push_back(object);
-          break;
         }
+
+        tf2::Transform tf_input2map;
+
+        try {
+          geometry_msgs::msg::TransformStamped ros_input2map = tf_buffer_.lookupTransform(
+            msg->header.frame_id, "map", msg->header.stamp, rclcpp::Duration::from_seconds(0.5));
+          tf2::fromMsg(ros_input2map.transform, tf_input2map);
+        } catch (tf2::TransformException & ex) {
+          RCLCPP_WARN(logger_, "%s", ex.what());
+          return;
+        }
+
+        tf2::Transform tf_input2object_origin;
+        tf2::fromMsg(msg->initial_state.pose_covariance.pose, tf_input2object_origin);
+
+        npc_simulator::msg::Object object = *msg;
+        object.header.frame_id = "map";
+
+        tf2::Transform tf_map2object_origin = tf_input2map.inverse() * tf_input2object_origin;
+        tf2::toMsg(tf_map2object_origin, object.initial_state.pose_covariance.pose);
+        // publish
+        dummy_perception_object_pub_->publish(convertObjectMsgToDummyPerception(&object));
+        objects_.push_back(object);
+        break;
       }
     case npc_simulator::msg::Object::DELETE: {
         for (size_t i = 0; i < objects_.size(); ++i) {
