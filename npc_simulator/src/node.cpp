@@ -93,7 +93,8 @@ NPCSimulator::NPCSimulator(rclcpp::Node & node)
   engage_sub_ = node.create_subscription<autoware_vehicle_msgs::msg::Engage>(
     "input/engage", large_queue_size, std::bind(&NPCSimulator::engageCallback, this, _1));
   object_sub_ = node.create_subscription<npc_simulator::msg::Object>(
-    "/simulation/npc_simulator/object_info", large_queue_size, std::bind(&NPCSimulator::objectCallback, this, _1));
+    "/simulation/npc_simulator/object_info", large_queue_size,
+    std::bind(&NPCSimulator::objectCallback, this, _1));
   map_sub_ = node.create_subscription<autoware_lanelet2_msgs::msg::MapBin>(
     "/map/vector_map", rclcpp::QoS(single_element_in_queue).transient_local(),
     std::bind(&NPCSimulator::mapCallback, this, _1));
@@ -144,8 +145,8 @@ void NPCSimulator::mainTimerCallback()
     return;
   }
 
-  if(lanelet_map_ptr_ == nullptr){
-    RCLCPP_WARN_STREAM(logger_, "Has not subscribed to map; skip timer callback." );
+  if (lanelet_map_ptr_ == nullptr) {
+    RCLCPP_WARN_STREAM(logger_, "Has not subscribed to map; skip timer callback.");
     return;
   }
 
