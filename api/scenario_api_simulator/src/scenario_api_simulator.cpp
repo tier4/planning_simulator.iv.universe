@@ -119,62 +119,67 @@ bool ScenarioAPISimulator::addNPC(
     std::independent_bits_engine<std::mt19937, 8, uint8_t> bit_eng(gen);
     std::generate(id.uuid.begin(), id.uuid.end(), bit_eng);
     uuid_map_[name] = id;
+
+    static const std::unordered_map<std::string, npc_simulator::msg::Object> objects
+    {
+      #define MAKE_OBJECT(TYPE, ...) \
+        getObjectMsg( \
+          autoware_perception_msgs::msg::Semantic::TYPE, 1.0, \
+          autoware_perception_msgs::msg::Shape::BOUNDING_BOX, __VA_ARGS__)
+
+      { "car",        MAKE_OBJECT(CAR,        4.0, 1.8, 2.5) },
+      { "pedestrian", MAKE_OBJECT(PEDESTRIAN, 0.8, 0.8, 2.0) },
+      { "bicycle",    MAKE_OBJECT(BICYCLE,    2.0, 0.8, 2.5) },
+      { "motorbike",  MAKE_OBJECT(MOTORBIKE,  2.5, 1.5, 2.5) },
+      { "bus",        MAKE_OBJECT(BUS,       10.0, 2.5, 3.5) },
+      { "truck",      MAKE_OBJECT(TRUCK,      7.5, 2.5, 3.0) },
+      { "unknown",    MAKE_OBJECT(UNKNOWN,    1.0, 1.0, 1.0) }
+
+      #undef MAKE_OBJECT
+
+    };
+
+    npc_simulator::msg::Object object;
+
+    try {
+      object = objects.at(npc_type);
+      object.offset_rate_from_center = (npc_type == "bicycle" ? 0.95 : 0); // Bicycle runs on left edge of lane
+    } catch (std::out_of_range &) {
+      RCLCPP_WARN(logger_, "NPC type is invalid. Publish NPC object as unknown type");
+      object = objects.at("unknown");
+    }
+
+    //get pose with frame_type
+    geometry_msgs::msg::Pose original_pose;
+    original_pose.position = pose.position;
+    original_pose.orientation = quatFromYaw(yawFromQuat(pose.orientation)); // ignore roll/pitch information
+
+    dummy_perception_publisher::msg::InitialState init_state;
+    if (!shiftNPCPose(original_pose, frame_type, object, &init_state.pose_covariance.pose)) {
+      return false;
+    } else {
+      object.header.stamp = clock_->now();
+      object.header.frame_id = "map";
+      object.initial_state = init_state;
+      object.initial_state.twist_covariance.twist.linear.x = velocity;
+      object.target_vel = velocity;
+      object.accel = npc_default_accel_;
+      object.id = uuid_map_[name];
+      object.action = npc_simulator::msg::Object::ADD;
+      object.stop_by_vehicle = stop_by_vehicle;
+
+      npc_simulator::msg::Object result {};
+
+      do
+      {
+        pub_object_info_->publish(object);
+        sleep(0.1);
+      }
+      while (not getNPC(name, result));
+
+      return true;
+    }
   }
-
-  static const std::unordered_map<std::string, npc_simulator::msg::Object> objects
-  {
-    #define MAKE_OBJECT(TYPE, ...) \
-  getObjectMsg( \
-    autoware_perception_msgs::msg::Semantic::TYPE, 1.0, \
-    autoware_perception_msgs::msg::Shape::BOUNDING_BOX, __VA_ARGS__)
-
-    {"car", MAKE_OBJECT(CAR, 4.0, 1.8, 2.5)},
-    {"pedestrian", MAKE_OBJECT(PEDESTRIAN, 0.8, 0.8, 2.0)},
-    {"bicycle", MAKE_OBJECT(BICYCLE, 2.0, 0.8, 2.5)},
-    {"motorbike", MAKE_OBJECT(MOTORBIKE, 2.5, 1.5, 2.5)},
-    {"bus", MAKE_OBJECT(BUS, 10.0, 2.5, 3.5)},
-    {"truck", MAKE_OBJECT(TRUCK, 7.5, 2.5, 3.0)},
-    {"unknown", MAKE_OBJECT(UNKNOWN, 1.0, 1.0, 1.0)}
-
-#undef MAKE_OBJECT
-  };
-
-  npc_simulator::msg::Object object;
-
-  try {
-    object = objects.at(npc_type);
-    object.offset_rate_from_center = (npc_type == "bicycle" ? 0.95 : 0); // Bicycle runs on left edge of lane
-  } catch (std::out_of_range &) {
-    RCLCPP_WARN(logger_, "NPC type is invalid. Publish NPC object as unknown type");
-    object = objects.at("unknown");
-  }
-
-  //get pose with frame_type
-  geometry_msgs::msg::Pose original_pose;
-  original_pose.position = pose.position;
-  original_pose.orientation = quatFromYaw(yawFromQuat(pose.orientation)); // ignore roll/pitch information
-
-  dummy_perception_publisher::msg::InitialState init_state;
-  if (!shiftNPCPose(original_pose, frame_type, object, &init_state.pose_covariance.pose)) {
-    return false;
-  }
-
-  object.header.stamp = clock_->now();
-  object.header.frame_id = "map";
-  object.initial_state = init_state;
-  object.initial_state.twist_covariance.twist.linear.x = velocity;
-  object.target_vel = velocity;
-  object.accel = npc_default_accel_;
-  object.id = uuid_map_[name];
-  object.action = npc_simulator::msg::Object::ADD;
-  object.stop_by_vehicle = stop_by_vehicle;
-
-  for (npc_simulator::msg::Object result{}; not getNPC(name, result); sleep(0.1)) {
-    pub_object_info_->publish(object);
-    rclcpp::spin_some(node_);    // sleep(1.0);
-  }
-
-  return true;  // TODO check successs
 }
 
 bool ScenarioAPISimulator::checkValidNPC(const std::string & name)
@@ -525,19 +530,32 @@ void ScenarioAPISimulator::updateNPC()
 bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::msg::Object & obj)
 {
   if (!checkValidNPC(name)) {
-    RCLCPP_WARN_STREAM(logger_, "Invalid NPC name '" << name << "' requested.");
-    return false;
+    std::stringstream ss;
+    ss << "Invalid NPC name '" << name << "' requested.";
+    throw std::runtime_error(ss.str());
   } else {
-    auto req = std::make_shared<npc_simulator::srv::GetObject::Request>();
-    req->object_id = uuid_map_.at(name);
-    auto res = std::make_shared<npc_simulator::srv::GetObject::Response>();
-    if (npc_simulator_->getObject(req, res)) {
-      obj = res->object;
-      return true;
-    } else {
-      RCLCPP_WARN_STREAM_ONCE(logger_, "Failed to get NPC");
-      return false;
+    constexpr std::size_t max_trials = 10;
+
+    std::size_t trials = 0;
+
+    for (double frequency = 60.0; trials < max_trials; rclcpp::Rate(frequency /= 2.0).sleep())
+    {
+      auto req = std::make_shared<npc_simulator::srv::GetObject::Request>();
+      req->object_id = uuid_map_.at(name);
+      auto res = std::make_shared<npc_simulator::srv::GetObject::Response>();
+      if (npc_simulator_->getObject(req, res)) {
+        obj = res->object;
+        return true;
+      } else {
+        RCLCPP_WARN_STREAM(
+          logger_,
+          "Failed to get NPC object (try " << ++trials << " of " << max_trials << ").");
+      }
     }
+    RCLCPP_ERROR_STREAM(
+      logger_,
+      "Failed to get NPC object (tried " << trials << " times but not respond).");
+    return false;
   }
 }
 
