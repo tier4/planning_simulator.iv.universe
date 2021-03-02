@@ -90,7 +90,7 @@ NPCSimulator::NPCSimulator(rclcpp::Node & node)
     "output/debug_object_info", durable_qos);
 
   // register callback
-  engage_sub_ = node.create_subscription<std_msgs::msg::Bool>(
+  engage_sub_ = node.create_subscription<autoware_vehicle_msgs::msg::Engage>(
     "input/engage", large_queue_size, std::bind(&NPCSimulator::engageCallback, this, _1));
   object_sub_ = node.create_subscription<npc_simulator::msg::Object>(
     "/simulation/npc_simulator/object_info", large_queue_size, std::bind(&NPCSimulator::objectCallback, this, _1));
@@ -229,9 +229,9 @@ void NPCSimulator::updateObjectPosition(
     getNearestZPos(obj->initial_state.pose_covariance.pose) + obj->shape.dimensions.z / 2.0;
 }
 
-void NPCSimulator::engageCallback(const std_msgs::msg::Bool::ConstSharedPtr engage)
+void NPCSimulator::engageCallback(const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr engage)
 {
-  engage_state_ = engage->data;
+  engage_state_ = engage->engage;
 }
 
 void NPCSimulator::inputImuInfo(
