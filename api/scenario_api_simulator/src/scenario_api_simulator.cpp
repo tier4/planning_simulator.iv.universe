@@ -550,7 +550,6 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::msg::
         RCLCPP_WARN_STREAM(
           logger_,
           "Failed to get NPC object (try " << ++trials << " of " << max_trials << ").");
-        rclcpp::Rate(10.0).sleep();
       }
     }
     RCLCPP_ERROR_STREAM(
