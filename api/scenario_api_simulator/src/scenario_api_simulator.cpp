@@ -530,14 +530,18 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::msg::
   } else {
     auto req = std::make_shared<npc_simulator::srv::GetObject::Request>();
     req->object_id = uuid_map_.at(name);
-    auto res = std::make_shared<npc_simulator::srv::GetObject::Response>();
-    if (npc_simulator_->getObject(req, res)) {
-      obj = res->object;
-      return true;
-    } else {
-      RCLCPP_WARN_STREAM_ONCE(logger_, "Failed to get NPC");
-      return false;
+
+    for (std::size_t trials = 0; trials < 10; ++trials)
+    {
+      auto res = std::make_shared<npc_simulator::srv::GetObject::Response>();
+      if (npc_simulator_->getObject(req, res)) {
+        obj = res->object;
+        return true;
+      } else {
+        RCLCPP_WARN_STREAM(logger_, "Failed to get NPC (try " << trials <<")");
+      }
     }
+    return false;
   }
 }
 
