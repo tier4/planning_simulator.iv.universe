@@ -531,16 +531,23 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::msg::
     auto req = std::make_shared<npc_simulator::srv::GetObject::Request>();
     req->object_id = uuid_map_.at(name);
 
-    for (std::size_t trials = 0; trials < 10; ++trials)
+    constexpr std::size_t max_trials = 10;
+    static std::size_t call_counts = 0, fail_counts = 0;
+    ++call_counts;
+    for (std::size_t trials = 0; trials < max_trials; ++trials)
     {
       auto res = std::make_shared<npc_simulator::srv::GetObject::Response>();
       if (npc_simulator_->getObject(req, res)) {
         obj = res->object;
         return true;
       } else {
-        RCLCPP_WARN_STREAM(logger_, "Failed to get NPC (try " << trials <<")");
+        RCLCPP_WARN_STREAM(logger_, "Failed to get NPC object (try " << trials << " of " << max_trials << ").");
+        rclcpp::Rate(10.0).sleep();
       }
     }
+    RCLCPP_ERROR_STREAM(logger_, "Failed to get NPC object (tried " << max_trials
+      << " times but not respond). The same error has occurred " << ++fail_counts
+      << " out of " << call_counts << " invocations of the getNPC function, including this call.");
     return false;
   }
 }
