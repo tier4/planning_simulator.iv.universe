@@ -39,12 +39,10 @@ ScenarioAPISimulator::ScenarioAPISimulator(rclcpp::Node::SharedPtr node)
   pub_object_info_ = node->create_publisher<npc_simulator::msg::Object>(
     "output/object_info",
     durable_qos);
-  pub_simulator_engage_ = node->create_publisher<std_msgs::msg::Bool>(
-    "output/simulator_engage",
-    durable_qos);
-  pub_npc_engage_ = node->create_publisher<std_msgs::msg::Bool>(
-    "output/npc_simulator_engage",
-    durable_qos);
+  pub_simulator_engage_ = node->create_publisher<autoware_vehicle_msgs::msg::Engage>(
+    "output/simulator_engage", durable_qos);
+  pub_npc_engage_ = node->create_publisher<autoware_vehicle_msgs::msg::Engage>(
+    "output/npc_simulator_engage", durable_qos);
 
   auto timer_callback = std::bind(&ScenarioAPISimulator::timerCallback, this);
   auto period = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -89,16 +87,16 @@ bool ScenarioAPISimulator::sendEngage(const bool engage)
 
 bool ScenarioAPISimulator::sendSimulatorEngage(const bool engage)
 {
-  std_msgs::msg::Bool boolmsg;
-  boolmsg.data = engage;
+  autoware_vehicle_msgs::msg::Engage boolmsg;
+  boolmsg.engage = engage;
   pub_simulator_engage_->publish(boolmsg);
   return true;  // TODO check success
 }
 
 bool ScenarioAPISimulator::sendNPCEngage(const bool engage)
 {
-  std_msgs::msg::Bool boolmsg;
-  boolmsg.data = engage;
+  autoware_vehicle_msgs::msg::Engage boolmsg;
+  boolmsg.engage = engage;
   pub_npc_engage_->publish(boolmsg);
   return true;  // TODO check success
 }
@@ -681,12 +679,9 @@ npc_simulator::msg::Object ScenarioAPISimulator::getObjectMsg(
   std::string npc_name,
   std::string frame_id)
 {
-  std_msgs::msg::Header header;
-  header.stamp = clock_->now();
-  header.frame_id = frame_id;
-
   npc_simulator::msg::Object object;
-  object.header = header;
+  object.header.stamp = clock_->now();
+  object.header.frame_id = frame_id;
   object.id = uuid_map_[npc_name];
   return object;
 }
