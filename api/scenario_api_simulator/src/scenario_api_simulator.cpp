@@ -530,22 +530,18 @@ void ScenarioAPISimulator::updateNPC()
 bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::msg::Object & obj)
 {
   if (!checkValidNPC(name)) {
-    // RCLCPP_WARN_STREAM(logger_, "Invalid NPC name '" << name << "' requested.");
-    // return false;
-
     std::stringstream ss;
     ss << "Invalid NPC name '" << name << "' requested.";
     throw std::runtime_error(ss.str());
   } else {
-    auto req = std::make_shared<npc_simulator::srv::GetObject::Request>();
-    req->object_id = uuid_map_.at(name);
-
     constexpr std::size_t max_trials = 10;
 
     std::size_t trials = 0;
 
     for (double frequency = 60.0; trials < max_trials; rclcpp::Rate(frequency /= 2.0).sleep())
     {
+      auto req = std::make_shared<npc_simulator::srv::GetObject::Request>();
+      req->object_id = uuid_map_.at(name);
       auto res = std::make_shared<npc_simulator::srv::GetObject::Response>();
       if (npc_simulator_->getObject(req, res)) {
         obj = res->object;
@@ -559,7 +555,7 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::msg::
     }
     RCLCPP_ERROR_STREAM(
       logger_,
-      "Failed to get NPC object (tried " << max_trials << " times but not respond).");
+      "Failed to get NPC object (tried " << trials << " times but not respond).");
     return false;
   }
 }
