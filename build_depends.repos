@@ -2,15 +2,15 @@ repositories:
   autoware/pilot.auto:
     type: git
     url: https://github.com/tier4/AutowareArchitectureProposal.iv.git
-    version: ros2-v0.8.0-beta
+    version: ros2
   simulator/scenario_runner:
     type: git
     url: https://github.com/tier4/scenario_runner.iv.universe.git
-    version: ros2-v0.8.0-beta
+    version: ros2
   description/vehicle/lexus_description:
     type: git
     url: https://github.com/tier4/lexus_description.iv.universe.git
-    version: ros2-v0.8.0-beta
+    version: ros2
   vendor/rclcpp_generic:
     type: git
     url: https://github.com/ApexAI/rclcpp_generic.git
