@@ -22,7 +22,7 @@
 #include <npc_simulator/msg/object.hpp>
 #include <unique_identifier_msgs/msg/uuid.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include <std_msgs/msg/bool.hpp>
+#include <autoware_vehicle_msgs/msg/engage.hpp>
 #include <npc_simulator/node.hpp>
 
 #include <unistd.h>
@@ -109,8 +109,9 @@ private:
   rclcpp::Node::SharedPtr node_;
   std::shared_ptr<NPCSimulator> npc_simulator_;
   rclcpp::Publisher<npc_simulator::msg::Object>::SharedPtr pub_object_info_;           //!< @brief topic pubscriber for npc
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_simulator_engage_;      //!< @brief topic pubscriber for vehicle engage
-  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_npc_engage_;            //!< @brief topic pubscriber for npc simulator engage
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::Engage>::SharedPtr pub_simulator_engage_;      //!< @brief topic pubscriber for vehicle engage
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::Engage>::SharedPtr
+    pub_npc_engage_;  //!< @brief topic pubscriber for npc simulator engage
   rclcpp::TimerBase::SharedPtr timer_control_;             //!< @brief timer for getting self-position
   std::unordered_map<std::string, unique_identifier_msgs::msg::UUID> uuid_map_;
   std::unordered_map<std::string, double> maxacc_map_;
