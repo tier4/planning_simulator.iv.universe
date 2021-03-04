@@ -1,7 +1,7 @@
 repositories:
   autoware/pilot.auto:
     type: git
-    url: https://github.com/tier4/pilot.auto.git
+    url: https://github.com/tier4/AutowareArchitectureProposal.iv.git
     version: ros2
   simulator/scenario_runner:
     type: git

@@ -33,6 +33,7 @@ set(service_files
 )
 set(msg_dependencies
   autoware_perception_msgs
+  autoware_vehicle_msgs
   dummy_perception_publisher
   geometry_msgs
   std_msgs

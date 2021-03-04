@@ -13,6 +13,7 @@
 
   <depend>autoware_lanelet2_msgs</depend>
   <depend>autoware_perception_msgs</depend>
+  <depend>autoware_vehicle_msgs</depend>
   <depend>boost</depend>
   <depend>dummy_perception_publisher</depend>
   <depend>lanelet2_extension</depend>

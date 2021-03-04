@@ -24,11 +24,12 @@
 #include "npc_simulator/msg/object.hpp"
 #include "npc_simulator/srv/get_object.hpp"
 
-#include "lanelet2_core/geometry/Lanelet.h"
-#include "lanelet2_extension/utility/utilities.hpp"
 #include "autoware_lanelet2_msgs/msg/map_bin.hpp"
 #include "autoware_perception_msgs/msg/dynamic_object_array.hpp"
+#include "autoware_vehicle_msgs/msg/engage.hpp"
 #include "dummy_perception_publisher/msg/object.hpp"
+#include "lanelet2_core/geometry/Lanelet.h"
+#include "lanelet2_extension/utility/utilities.hpp"
 #include "vehicle_info_util/vehicle_info.hpp"
 
 #include "tf2/LinearMath/Transform.h"
@@ -41,7 +42,6 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
-#include "std_msgs/msg/bool.hpp"
 
 
 class NPCSimulator
@@ -54,7 +54,7 @@ private:
     dummy_perception_object_pub_;
   rclcpp::Publisher<autoware_perception_msgs::msg::DynamicObjectArray>::SharedPtr
     debug_object_pub_;  // for visualization
-  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr engage_sub_;
+  rclcpp::Subscription<autoware_vehicle_msgs::msg::Engage>::SharedPtr engage_sub_;
   rclcpp::Subscription<npc_simulator::msg::Object>::SharedPtr object_sub_;
   rclcpp::Subscription<autoware_lanelet2_msgs::msg::MapBin>::SharedPtr map_sub_;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr pose_sub_;
@@ -130,7 +130,7 @@ private:
   void inputVelocityZ(
     npc_simulator::msg::Object * obj, const double prev_z_pos, const double delta_time);
 
-  void engageCallback(const std_msgs::msg::Bool::ConstSharedPtr engage);
+  void engageCallback(const autoware_vehicle_msgs::msg::Engage::ConstSharedPtr engage);
   void objectCallback(const npc_simulator::msg::Object::ConstSharedPtr msg);
   void mapCallback(const autoware_lanelet2_msgs::msg::MapBin::ConstSharedPtr msg);
   void poseCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
