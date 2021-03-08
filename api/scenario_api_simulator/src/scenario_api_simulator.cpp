@@ -172,6 +172,7 @@ bool ScenarioAPISimulator::addNPC(
       {
         pub_object_info_->publish(object);
         sleep(0.1);
+        rclcpp::spin_some(node_);
       }
       while (not getNPC(name, result));
 
@@ -545,9 +546,10 @@ bool ScenarioAPISimulator::getNPC(const std::string & name, npc_simulator::msg::
         obj = res->object;
         return true;
       } else {
-        RCLCPP_WARN_STREAM(
+        RCLCPP_ERROR_STREAM(
           logger_,
           "Failed to get NPC object (try " << ++trials << " of " << max_trials << ").");
+        return false;
       }
     }
     RCLCPP_ERROR_STREAM(
