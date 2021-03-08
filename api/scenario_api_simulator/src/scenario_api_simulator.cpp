@@ -34,7 +34,7 @@ ScenarioAPISimulator::ScenarioAPISimulator(rclcpp::Node::SharedPtr node)
   npc_simulator_ = std::make_shared<NPCSimulator>(*node);
 
   /* register publisher */
-  rclcpp::QoS durable_qos{1};
+  rclcpp::QoS durable_qos{10};
   durable_qos.transient_local();
   pub_object_info_ = node->create_publisher<npc_simulator::msg::Object>(
     "output/object_info",
