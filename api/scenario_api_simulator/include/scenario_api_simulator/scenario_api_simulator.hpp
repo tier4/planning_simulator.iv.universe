@@ -108,10 +108,10 @@ private:
   rclcpp::Clock::SharedPtr clock_;
   rclcpp::Node::SharedPtr node_;
   std::shared_ptr<NPCSimulator> npc_simulator_;
-  rclcpp::Publisher<npc_simulator::msg::Object>::SharedPtr pub_object_info_;           //!< @brief topic pubscriber for npc
-  rclcpp::Publisher<autoware_vehicle_msgs::msg::Engage>::SharedPtr pub_simulator_engage_;      //!< @brief topic pubscriber for vehicle engage
+  rclcpp::Publisher<npc_simulator::msg::Object>::SharedPtr pub_object_info_;           //!< @brief topic publisher for npc
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::Engage>::SharedPtr pub_simulator_engage_;      //!< @brief topic publisher for vehicle engage
   rclcpp::Publisher<autoware_vehicle_msgs::msg::Engage>::SharedPtr
-    pub_npc_engage_;  //!< @brief topic pubscriber for npc simulator engage
+    pub_npc_engage_;  //!< @brief topic publisher for npc simulator engage
   rclcpp::TimerBase::SharedPtr timer_control_;             //!< @brief timer for getting self-position
   std::unordered_map<std::string, unique_identifier_msgs::msg::UUID> uuid_map_;
   std::unordered_map<std::string, double> maxacc_map_;

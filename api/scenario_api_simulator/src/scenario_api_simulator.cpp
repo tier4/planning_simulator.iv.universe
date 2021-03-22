@@ -108,7 +108,7 @@ bool ScenarioAPISimulator::addNPC(
 {
   // uuid map check
   if (uuid_map_.find(name) != uuid_map_.end()) {
-    RCLCPP_WARN_STREAM(logger_, "NPC name :" << name << " already exsists");
+    RCLCPP_WARN_STREAM(logger_, "NPC name :" << name << " already exists");
     return true;
   } else {
     // generate random UUID
@@ -474,13 +474,13 @@ bool ScenarioAPISimulator::checkNPCFinishVelocityChange(
   }
 
   if (obj.accel < 1e-03) {
-    //no request for chaning velocity
+    //no request for changing velocity
     end_velocity_change = true;
     return true;
   }
 
   if (std::fabs(obj.initial_state.twist_covariance.twist.linear.x - obj.target_vel) < 1e-02) {
-    //already finished chaning velocity
+    //already finished changing velocity
     end_velocity_change = true;
     return true;
   }
@@ -647,7 +647,7 @@ bool ScenarioAPISimulator::shiftNPCPose(
   const npc_simulator::msg::Object & obj,
   geometry_msgs::msg::Pose * shift_pose)
 {
-  // shift pose from farame_type to "Center"
+  // shift pose from frame_type to "Center"
 
   if (obj.shape.type == autoware_perception_msgs::msg::Shape::POLYGON) {
     RCLCPP_ERROR_STREAM(logger_, "Now, npc with polygon type is not supported");
