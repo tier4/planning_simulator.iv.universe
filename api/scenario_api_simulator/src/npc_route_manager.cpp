@@ -238,7 +238,7 @@ uint8_t NPCRouteManager::decideNPCLaneFollowDir(
 
   //no lanelet id to correspond to closest lanelet id
   for (const auto & route : routes) {
-    //serach adjacent lane
+    //search adjacent lane
     auto beside_lanes = routing_graph_ptr_->besides(route);
     for (const auto & lane : beside_lanes) {
       if (lane.id() != lane_id) {
@@ -339,7 +339,7 @@ bool NPCRouteManager::getClosestLaneletWithRoutes(
   bool is_found_target_closest_lanelet = false;
   double min_dist = max_dist;
   for (const auto & lanelet : nearest_lanelets) {
-    //check lenalet is involved in routes or not
+    //check lanelet is involved in routes or not
     bool is_lane_in_route = false;
     bool is_lane_in_besides = false;
     for (const auto & route : routes) {
@@ -354,7 +354,7 @@ bool NPCRouteManager::getClosestLaneletWithRoutes(
         //if already in lane, skip here
         break;
       }
-      //check lenalet is involved in besides of routes or not (for lane change)
+      //check lanelet is involved in besides of routes or not (for lane change)
       auto current_lanelet = lanelet_map_ptr_->laneletLayer.get(route.id());
       auto besides_lanelets = routing_graph_ptr_->besides(current_lanelet);
       for (const auto & beside_lane : besides_lanelets) {
@@ -393,7 +393,7 @@ bool NPCRouteManager::getClosestLaneletWithRoutes(
     *closest_lanelet = target_closest_lanelet;
     return true;
   } else {
-    //serach closest lanelet without routes
+    //search closest lanelet without routes
     return getClosestLanelet(current_pose, lanelet_map_ptr, closest_lanelet);
   }
 }
