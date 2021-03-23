@@ -3,11 +3,9 @@
 <launch>
   <!-- dummy detection and sensor data -->
   <arg name="initial_engage_state" default="true"/>
-  <arg name="lexus_param_file" default="$(find-pkg-share lexus_description)/config/vehicle_info.param.yaml" />
 
   <group ns="simulation">
     <node pkg="npc_simulator" exec="npc_simulator_main" name="npc_simulator" output="screen">
-      <param from="$(var lexus_param_file)" />
       <param name="/initial_engage_state" value="$(var initial_engage_state)"/>
       <remap from="/input/engage" to="npc_simulator/engage"/>
       <remap from="/input/object" to="npc_simulator/object_info"/>
