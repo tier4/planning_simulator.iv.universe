@@ -127,8 +127,8 @@ bool ScenarioAPISimulator::addNPC(
 
       { "car",        MAKE_OBJECT(CAR,        4.0, 1.8, 2.5) },
       { "pedestrian", MAKE_OBJECT(PEDESTRIAN, 0.8, 0.8, 2.0) },
-      { "bicycle",    MAKE_OBJECT(BICYCLE,    2.0, 0.8, 2.5) },
-      { "motorbike",  MAKE_OBJECT(MOTORBIKE,  2.5, 1.5, 2.5) },
+      { "bicycle",    MAKE_OBJECT(BICYCLE,    1.8, 0.8, 2.5) },
+      { "motorbike",  MAKE_OBJECT(MOTORBIKE,  1.8, 0.8, 2.5) },
       { "bus",        MAKE_OBJECT(BUS,       10.0, 2.5, 3.5) },
       { "truck",      MAKE_OBJECT(TRUCK,      7.5, 2.5, 3.0) },
       { "unknown",    MAKE_OBJECT(UNKNOWN,    1.0, 1.0, 1.0) }
