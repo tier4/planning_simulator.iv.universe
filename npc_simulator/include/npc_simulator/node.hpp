@@ -30,7 +30,7 @@
 #include "dummy_perception_publisher/msg/object.hpp"
 #include "lanelet2_core/geometry/Lanelet.h"
 #include "lanelet2_extension/utility/utilities.hpp"
-#include "vehicle_info_util/vehicle_info.hpp"
+#include "vehicle_info_util/vehicle_info_util.hpp"
 
 #include "tf2/LinearMath/Transform.h"
 #include "tf2/convert.h"
