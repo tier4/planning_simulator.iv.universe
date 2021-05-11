@@ -65,7 +65,7 @@ NPCSimulator::NPCSimulator(rclcpp::Node & node)
   clock_(node.get_clock()),
   tf_buffer_(clock_),
   tf_listener_(tf_buffer_),
-  vehicle_info_(vehicle_info_util::VehicleInfo::create(node))
+  vehicle_info_(vehicle_info_util::VehicleInfoUtil(node).getVehicleInfo())
 {
   using std::placeholders::_1;
   using std::placeholders::_2;
@@ -74,9 +74,9 @@ NPCSimulator::NPCSimulator(rclcpp::Node & node)
   engage_state_ = node.declare_parameter<bool>("initial_engage_state", true);
 
   // all the parameter reading etc. already done by vehicle_info
-  vehicle_width_ = vehicle_info_.vehicle_width_m_;
-  vehicle_length_ = vehicle_info_.vehicle_length_m_;
-  vehicle_base2center_ = vehicle_length_ / 2.0 - vehicle_info_.rear_overhang_m_;
+  vehicle_width_ = vehicle_info_.vehicle_width_m;
+  vehicle_length_ = vehicle_info_.vehicle_length_m;
+  vehicle_base2center_ = vehicle_length_ / 2.0 - vehicle_info_.rear_overhang_m;
 
   static constexpr std::size_t single_element_in_queue = 1;
   static constexpr std::size_t small_queue_size = 10;
