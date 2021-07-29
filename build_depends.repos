@@ -1,8 +1,16 @@
 repositories:
-  autoware/pilot.auto:
+  autoware/autoware.iv:
     type: git
-    url: https://github.com/tier4/AutowareArchitectureProposal.iv.git
-    version: ros2
+    url: https://github.com/tier4/autoware.iv.git
+    version: main
+  msgs/autoware_iv_msgs:
+    type: git
+    url: https://github.com/tier4/autoware_iv_msgs.git
+    version: main
+  msgs/autoware_api_msgs:
+    type: git
+    url: https://github.com/tier4/autoware_api_msgs.git
+    version: main
   simulator/scenario_runner:
     type: git
     url: https://github.com/tier4/scenario_runner.iv.universe.git
@@ -11,24 +19,11 @@ repositories:
     type: git
     url: https://github.com/tier4/lexus_description.iv.universe.git
     version: ros2
-  vendor/rclcpp_generic:
+  missing_packages/lanelet2:
     type: git
-    url: https://github.com/ApexAI/rclcpp_generic.git
-    version: autoware
-  vendor/rosbridge_suite:
+    url: https://github.com/fzi-forschungszentrum-informatik/Lanelet2.git
+    version: 1.1.1
+  missing_packages/mrt_cmake_modules:
     type: git
-    url: https://github.com/RobotWebTools/rosbridge_suite.git
-    version: ros2
-  vendor/topic_tools:
-    type: git
-    url: https://github.com/ApexAI/topic_tools.git
-    version: autoware
-  # dependencies for autoware/pilot.auto
-  vendor/grid_map:
-    type: git
-    url: https://github.com/mitsudome-r/grid_map.git
-    version: ros2-fix-ci
-  vendor/perception_pcl:
-    type: git
-    url: https://github.com/ros-perception/perception_pcl.git
-    version: foxy-devel
+    url: https://github.com/KIT-MRT/mrt_cmake_modules.git
+    version: 1.0.8

@@ -4,39 +4,68 @@ on:
   pull_request:
   push:
     branches:
-      - ros2
+      - main
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-20.04
-    container: ros:foxy
+    runs-on: ubuntu-latest
+    container: osrf/ros:galactic-desktop
 
     steps:
-    - name: Check out repo
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Clone dependency packages
-      run: |
-        mkdir dependency_ws 
-        vcs import dependency_ws < build_depends.repos
+      - name: Install pip
+        run: |
+          apt-get -y update
+          apt-get -y install python3-pip
 
-    - name: Upgrade ros packages
-      run: |
-        apt update
-        apt upgrade -y
+      - name: Search packages in this repository
+        id: list_packages
+        run: |
+          echo ::set-output name=package_list::$(colcon list --names-only)
 
-    - name: Install missing dependencies
-      run: |
-        sudo apt update
-        rosdep update
-        DEBIAN_FRONTEND=noninteractive rosdep install --from-paths . --ignore-src --rosdistro foxy -y
+      - name: Show target packages
+        run: |
+          echo "Target packages: ${{ steps.list_packages.outputs.package_list }}"
 
-    - name: Build
-      run: |
-        . /opt/ros/foxy/setup.sh
-        colcon build --event-handlers console_cohesion+
+      - name: Set git config for private repositories
+        run: |
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          git config --global url.https://${{ secrets.REPO_TOKEN }}@github.com.insteadOf 'https://github.com'
 
-    - name: Run tests
-      run: |
-        . /opt/ros/foxy/setup.sh
-        colcon test --event-handlers console_cohesion+
+      - name: Clone dependency packages
+        run: |
+          mkdir dependency_ws
+          vcs import dependency_ws < build_depends.repos
+
+      - name: Remove irrelevant packages
+        run: |
+          mkdir necessary_packages_ws
+
+          necessary_packages=$(colcon list --packages-up-to ${{ steps.list_packages.outputs.package_list }} | awk '{ print $2 }')
+          for necessary_package in ${necessary_packages}; do
+            mv "$necessary_package" necessary_packages_ws
+          done
+
+          rm -rf dependency_ws
+
+      - name: Install dependencies
+        run: |
+          apt-get -y update
+          rosdep update
+          rosdep install -y --from-paths . --ignore-src --rosdistro galactic
+
+      - name: Build
+        run: |
+          . /opt/ros/galactic/setup.sh
+          colcon build --event-handlers console_cohesion+ \
+            --packages-up-to ${{ steps.list_packages.outputs.package_list }} \
+            --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+      - name: Run tests
+        run: |
+          . /opt/ros/galactic/setup.sh
+          colcon test --event-handlers console_cohesion+ \
+            --packages-select ${{ steps.list_packages.outputs.package_list }} \
+            --return-code-on-test-failure
