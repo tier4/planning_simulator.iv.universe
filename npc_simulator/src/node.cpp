@@ -624,6 +624,7 @@ int NPCSimulator::getCurrentLaneletID(
       for (const auto & lane_pair : lane_list) {
         // check lanelet is involved in target lanes or not
         for (const auto & target_lane_id : obj_route.data) {
+          (void)target_lane_id;
           if (lane_pair.first == near_lanelet.second.id()) {
             is_lane_in_route = true;
             is_in_besides_lane = lane_pair.second;
